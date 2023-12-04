@@ -1,3 +1,4 @@
+add_subdirectory(ELFExplorer)
 add_subdirectory(GMLPlayground)
 add_subdirectory(Profiler)
 add_subdirectory(HackStudio)
