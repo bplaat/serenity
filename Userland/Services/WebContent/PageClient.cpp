@@ -279,9 +279,9 @@ Web::DevicePixelRect PageClient::page_did_request_fullscreen_window()
     return client().did_request_fullscreen_window();
 }
 
-void PageClient::page_did_request_scroll(i32 x_delta, i32 y_delta)
+void PageClient::page_did_request_scroll(Web::CSSPixels delta_x, Web::CSSPixels delta_y)
 {
-    client().async_did_request_scroll(x_delta, y_delta);
+    client().async_did_request_scroll(delta_x * device_pixels_per_css_pixel(), delta_y * device_pixels_per_css_pixel());
 }
 
 void PageClient::page_did_request_scroll_to(Web::CSSPixelPoint scroll_position)
@@ -294,7 +294,7 @@ void PageClient::page_did_request_scroll_to(Web::CSSPixelPoint scroll_position)
     page().top_level_traversable()->set_viewport_rect(viewport);
 
     auto device_scroll_position = page().css_to_device_point(scroll_position);
-    client().async_did_request_scroll_to(device_scroll_position.to_type<int>());
+    client().async_did_request_scroll_to(device_scroll_position);
 }
 
 void PageClient::page_did_enter_tooltip_area(Web::CSSPixelPoint content_position, ByteString const& title)

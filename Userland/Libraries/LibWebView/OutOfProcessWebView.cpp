@@ -47,14 +47,14 @@ OutOfProcessWebView::OutOfProcessWebView()
             client().async_handle_file_return(0, IPC::File(file.value().stream()), request_id);
     };
 
-    on_scroll_by_delta = [this](auto x_delta, auto y_delta) {
-        horizontal_scrollbar().increase_slider_by(x_delta);
-        vertical_scrollbar().increase_slider_by(y_delta);
+    on_scroll_by_delta = [this](auto delta_x, auto delta_y) {
+        horizontal_scrollbar().increase_slider_by(delta_x.value());
+        vertical_scrollbar().increase_slider_by(delta_y.value());
     };
 
     on_scroll_to_point = [this](auto position) {
-        horizontal_scrollbar().set_value(position.x());
-        vertical_scrollbar().set_value(position.y());
+        horizontal_scrollbar().set_value(position.x().value());
+        vertical_scrollbar().set_value(position.y().value());
     };
 
     on_cursor_change = [this](auto cursor) {

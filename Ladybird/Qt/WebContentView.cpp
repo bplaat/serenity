@@ -90,14 +90,14 @@ WebContentView::WebContentView(WebContentOptions const& web_content_options, Str
         viewport()->update();
     };
 
-    on_scroll_by_delta = [this](auto x_delta, auto y_delta) {
-        horizontalScrollBar()->setValue(max(0, horizontalScrollBar()->value() + x_delta));
-        verticalScrollBar()->setValue(max(0, verticalScrollBar()->value() + y_delta));
+    on_scroll_by_delta = [this](auto delta_x, auto delta_y) {
+        horizontalScrollBar()->setValue(max(0, horizontalScrollBar()->value() + delta_x.value()));
+        verticalScrollBar()->setValue(max(0, verticalScrollBar()->value() + delta_y.value()));
     };
 
     on_scroll_to_point = [this](auto position) {
-        horizontalScrollBar()->setValue(position.x());
-        verticalScrollBar()->setValue(position.y());
+        horizontalScrollBar()->setValue(position.x().value());
+        verticalScrollBar()->setValue(position.y().value());
     };
 
     on_cursor_change = [this](auto cursor) {

@@ -38,8 +38,8 @@ private:
     virtual void did_request_cursor_change(i32) override;
     virtual void did_layout(Web::DevicePixelSize) override;
     virtual void did_change_title(ByteString const&) override;
-    virtual void did_request_scroll(i32, i32) override;
-    virtual void did_request_scroll_to(Gfx::IntPoint) override;
+    virtual void did_request_scroll(Web::DevicePixels, Web::DevicePixels) override;
+    virtual void did_request_scroll_to(Web::DevicePixelPoint) override;
     virtual void did_enter_tooltip_area(Gfx::IntPoint, ByteString const&) override;
     virtual void did_leave_tooltip_area() override;
     virtual void did_hover_link(AK::URL const&) override;

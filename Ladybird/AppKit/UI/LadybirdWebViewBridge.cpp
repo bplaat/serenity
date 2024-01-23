@@ -38,18 +38,18 @@ WebViewBridge::WebViewBridge(Vector<Web::DevicePixelRect> screen_rects, float de
 
     create_client();
 
-    on_scroll_by_delta = [this](auto x_delta, auto y_delta) {
+    on_scroll_by_delta = [this](auto delta_x, auto delta_y) {
         auto position = m_viewport_rect.location();
-        position.set_x(position.x() + x_delta);
-        position.set_y(position.y() + y_delta);
+        position.set_x(position.x() + delta_x.value());
+        position.set_y(position.y() + delta_y.value());
 
         if (on_scroll_to_point)
-            on_scroll_to_point(position);
+            on_scroll_to_point(position.to_type<Web::DevicePixels>());
     };
 
-    on_scroll_to_point = [this](auto position) {
+    on_scroll_to_point = [this](Web::DevicePixelPoint position) {
         if (on_scroll)
-            on_scroll(to_widget_position(position));
+            on_scroll(to_widget_position(position.to_type<int>()));
     };
 
     on_request_worker_agent = []() {

@@ -90,7 +90,7 @@ private:
     virtual Web::DevicePixelRect page_did_request_maximize_window() override;
     virtual Web::DevicePixelRect page_did_request_minimize_window() override;
     virtual Web::DevicePixelRect page_did_request_fullscreen_window() override;
-    virtual void page_did_request_scroll(i32, i32) override;
+    virtual void page_did_request_scroll(Web::CSSPixels, Web::CSSPixels) override;
     virtual void page_did_request_scroll_to(Web::CSSPixelPoint) override;
     virtual void page_did_enter_tooltip_area(Web::CSSPixelPoint, ByteString const&) override;
     virtual void page_did_leave_tooltip_area() override;

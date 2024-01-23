@@ -99,13 +99,13 @@ void WebContentClient::did_change_title(ByteString const& title)
         m_view.on_title_change(title);
 }
 
-void WebContentClient::did_request_scroll(i32 x_delta, i32 y_delta)
+void WebContentClient::did_request_scroll(Web::DevicePixels delta_x, Web::DevicePixels delta_y)
 {
     if (m_view.on_scroll_by_delta)
-        m_view.on_scroll_by_delta(x_delta, y_delta);
+        m_view.on_scroll_by_delta(delta_x, delta_y);
 }
 
-void WebContentClient::did_request_scroll_to(Gfx::IntPoint scroll_position)
+void WebContentClient::did_request_scroll_to(Web::DevicePixelPoint scroll_position)
 {
     if (m_view.on_scroll_to_point)
         m_view.on_scroll_to_point(scroll_position);

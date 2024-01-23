@@ -254,7 +254,7 @@ public:
     virtual void page_did_invalidate(CSSPixelRect const&) { }
     virtual void page_did_change_favicon(Gfx::Bitmap const&) { }
     virtual void page_did_layout() { }
-    virtual void page_did_request_scroll(i32, i32) { }
+    virtual void page_did_request_scroll(CSSPixels, CSSPixels) { }
     virtual void page_did_request_scroll_to(CSSPixelPoint) { }
     virtual void page_did_request_alert(String const&) { }
     virtual void page_did_request_confirm(String const&) { }
