@@ -84,12 +84,12 @@ private:
     virtual void page_did_request_navigate_back() override;
     virtual void page_did_request_navigate_forward() override;
     virtual void page_did_request_refresh() override;
-    virtual Gfx::IntSize page_did_request_resize_window(Gfx::IntSize) override;
-    virtual Gfx::IntPoint page_did_request_reposition_window(Gfx::IntPoint) override;
+    virtual Web::DevicePixelSize page_did_request_resize_window(Web::DevicePixelSize) override;
+    virtual Web::DevicePixelPoint page_did_request_reposition_window(Web::DevicePixelPoint) override;
     virtual void page_did_request_restore_window() override;
-    virtual Gfx::IntRect page_did_request_maximize_window() override;
-    virtual Gfx::IntRect page_did_request_minimize_window() override;
-    virtual Gfx::IntRect page_did_request_fullscreen_window() override;
+    virtual Web::DevicePixelRect page_did_request_maximize_window() override;
+    virtual Web::DevicePixelRect page_did_request_minimize_window() override;
+    virtual Web::DevicePixelRect page_did_request_fullscreen_window() override;
     virtual void page_did_request_scroll(i32, i32) override;
     virtual void page_did_request_scroll_to(Web::CSSPixelPoint) override;
     virtual void page_did_enter_tooltip_area(Web::CSSPixelPoint, ByteString const&) override;

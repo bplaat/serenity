@@ -40,7 +40,7 @@ public:
 
     String const& handle() const { return m_client_state.client_handle; }
 
-    void server_did_paint(Badge<WebContentClient>, i32 bitmap_id, Gfx::IntSize size);
+    void server_did_paint(Badge<WebContentClient>, i32 bitmap_id, Web::DevicePixelSize size);
 
     void load(AK::URL const&);
     void load_html(StringView);
@@ -110,7 +110,7 @@ public:
 
     void enable_inspector_prototype();
 
-    Function<void(Gfx::IntSize)> on_did_layout;
+    Function<void(Web::DevicePixelSize)> on_did_layout;
     Function<void()> on_ready_to_paint;
     Function<String(Web::HTML::ActivateTab)> on_new_tab;
     Function<void()> on_activate_tab;
@@ -158,11 +158,11 @@ public:
     Function<void(Web::Cookie::Cookie const& cookie)> on_update_cookie;
     Function<void(i32 count_waiting)> on_resource_status_change;
     Function<void()> on_restore_window;
-    Function<Gfx::IntPoint(Gfx::IntPoint)> on_reposition_window;
-    Function<Gfx::IntSize(Gfx::IntSize)> on_resize_window;
-    Function<Gfx::IntRect()> on_maximize_window;
-    Function<Gfx::IntRect()> on_minimize_window;
-    Function<Gfx::IntRect()> on_fullscreen_window;
+    Function<Web::DevicePixelPoint(Web::DevicePixelPoint)> on_reposition_window;
+    Function<Web::DevicePixelSize(Web::DevicePixelSize)> on_resize_window;
+    Function<Web::DevicePixelRect()> on_maximize_window;
+    Function<Web::DevicePixelRect()> on_minimize_window;
+    Function<Web::DevicePixelRect()> on_fullscreen_window;
     Function<void(Color current_color)> on_request_color_picker;
     Function<void(Gfx::IntPoint content_position, i32 minimum_width, Vector<Web::HTML::SelectItem> items)> on_request_select_dropdown;
     Function<void(bool)> on_finish_handling_input_event;

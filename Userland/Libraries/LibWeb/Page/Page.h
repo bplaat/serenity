@@ -231,12 +231,12 @@ public:
     virtual void page_did_request_navigate_back() { }
     virtual void page_did_request_navigate_forward() { }
     virtual void page_did_request_refresh() { }
-    virtual Gfx::IntSize page_did_request_resize_window(Gfx::IntSize) { return {}; }
-    virtual Gfx::IntPoint page_did_request_reposition_window(Gfx::IntPoint) { return {}; }
+    virtual Web::DevicePixelSize page_did_request_resize_window(Web::DevicePixelSize) { return {}; }
+    virtual Web::DevicePixelPoint page_did_request_reposition_window(Web::DevicePixelPoint) { return {}; }
     virtual void page_did_request_restore_window() { }
-    virtual Gfx::IntRect page_did_request_maximize_window() { return {}; }
-    virtual Gfx::IntRect page_did_request_minimize_window() { return {}; }
-    virtual Gfx::IntRect page_did_request_fullscreen_window() { return {}; }
+    virtual Web::DevicePixelRect page_did_request_maximize_window() { return {}; }
+    virtual Web::DevicePixelRect page_did_request_minimize_window() { return {}; }
+    virtual Web::DevicePixelRect page_did_request_fullscreen_window() { return {}; }
     virtual void page_did_start_loading(const AK::URL&, bool is_redirect) { (void)is_redirect; }
     virtual void page_did_create_new_document(Web::DOM::Document&) { }
     virtual void page_did_destroy_document(Web::DOM::Document&) { }

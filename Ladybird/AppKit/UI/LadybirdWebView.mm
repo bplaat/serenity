@@ -242,8 +242,8 @@ static void copy_data_to_clipboard(StringView data, NSPasteboardType pasteboard_
 - (void)setWebViewCallbacks
 {
     m_web_view_bridge->on_did_layout = [self](auto content_size) {
-        auto inverse_device_pixel_ratio = m_web_view_bridge->inverse_device_pixel_ratio();
-        [[self documentView] setFrameSize:NSMakeSize(content_size.width() * inverse_device_pixel_ratio, content_size.height() * inverse_device_pixel_ratio)];
+        auto device_pixel_ratio = m_web_view_bridge->device_pixel_ratio();
+        [[self documentView] setFrameSize:NSMakeSize(content_size.width().value() / device_pixel_ratio, content_size.height().value() / device_pixel_ratio)];
     };
 
     m_web_view_bridge->on_ready_to_paint = [self]() {
@@ -656,33 +656,33 @@ static void copy_data_to_clipboard(StringView data, NSPasteboardType pasteboard_
         [[self window] orderFront:nil];
     };
 
-    m_web_view_bridge->on_reposition_window = [self](auto const& position) {
+    m_web_view_bridge->on_reposition_window = [self](Web::DevicePixelPoint const& position) {
         auto frame = [[self window] frame];
-        frame.origin = Ladybird::gfx_point_to_ns_point(position);
+        frame.origin = Ladybird::gfx_point_to_ns_point(position.to_type<int>());
         [[self window] setFrame:frame display:YES];
 
-        return Ladybird::ns_point_to_gfx_point([[self window] frame].origin);
+        return Ladybird::ns_point_to_gfx_point([[self window] frame].origin).to_type<Web::DevicePixels>();
     };
 
-    m_web_view_bridge->on_resize_window = [self](auto const& size) {
+    m_web_view_bridge->on_resize_window = [self](Web::DevicePixelSize const& size) {
         auto frame = [[self window] frame];
-        frame.size = Ladybird::gfx_size_to_ns_size(size);
+        frame.size = Ladybird::gfx_size_to_ns_size(size.to_type<int>());
         [[self window] setFrame:frame display:YES];
 
-        return Ladybird::ns_size_to_gfx_size([[self window] frame].size);
+        return Ladybird::ns_size_to_gfx_size([[self window] frame].size).to_type<Web::DevicePixels>();
     };
 
     m_web_view_bridge->on_maximize_window = [self]() {
         auto frame = [[NSScreen mainScreen] frame];
         [[self window] setFrame:frame display:YES];
 
-        return Ladybird::ns_rect_to_gfx_rect([[self window] frame]);
+        return Ladybird::ns_rect_to_gfx_rect([[self window] frame]).to_type<Web::DevicePixels>();
     };
 
     m_web_view_bridge->on_minimize_window = [self]() {
         [[self window] setIsMiniaturized:YES];
 
-        return Ladybird::ns_rect_to_gfx_rect([[self window] frame]);
+        return Ladybird::ns_rect_to_gfx_rect([[self window] frame]).to_type<Web::DevicePixels>();
     };
 
     m_web_view_bridge->on_fullscreen_window = [self]() {
@@ -690,7 +690,7 @@ static void copy_data_to_clipboard(StringView data, NSPasteboardType pasteboard_
             [[self window] toggleFullScreen:nil];
         }
 
-        return Ladybird::ns_rect_to_gfx_rect([[self window] frame]);
+        return Ladybird::ns_rect_to_gfx_rect([[self window] frame]).to_type<Web::DevicePixels>();
     };
 
     m_web_view_bridge->on_received_source = [self](auto const& url, auto const& source) {
@@ -1140,9 +1140,8 @@ static void copy_data_to_clipboard(StringView data, NSPasteboardType pasteboard_
     CGContextSaveGState(context);
 
     auto device_pixel_ratio = m_web_view_bridge->device_pixel_ratio();
-    auto inverse_device_pixel_ratio = m_web_view_bridge->inverse_device_pixel_ratio();
 
-    CGContextScaleCTM(context, inverse_device_pixel_ratio, inverse_device_pixel_ratio);
+    CGContextScaleCTM(context, 1.0f / device_pixel_ratio, 1.0f / device_pixel_ratio);
 
     auto* provider = CGDataProviderCreateWithData(nil, bitmap.scanline_u8(0), bitmap.size_in_bytes(), nil);
     auto image_rect = CGRectMake(rect.origin.x * device_pixel_ratio, rect.origin.y * device_pixel_ratio, bitmap_size.width(), bitmap_size.height());

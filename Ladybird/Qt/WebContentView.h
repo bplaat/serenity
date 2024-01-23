@@ -66,9 +66,9 @@ public:
 
     ErrorOr<String> dump_layout_tree();
 
-    void set_viewport_rect(Gfx::IntRect);
-    void set_window_size(Gfx::IntSize);
-    void set_window_position(Gfx::IntPoint);
+    void set_viewport_rect(Web::DevicePixelRect);
+    void set_window_size(Web::DevicePixelSize);
+    void set_window_position(Web::DevicePixelPoint);
     void set_device_pixel_ratio(double);
 
     enum class PaletteMode {
@@ -93,7 +93,7 @@ private:
 
     bool m_should_show_line_box_borders { false };
 
-    Gfx::IntRect m_viewport_rect;
+    Web::DevicePixelRect m_viewport_rect;
 
     WebContentOptions m_web_content_options;
     StringView m_webdriver_content_ipc_path;

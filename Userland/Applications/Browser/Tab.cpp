@@ -275,30 +275,30 @@ Tab::Tab(BrowserWindow& window)
         m_web_content_view->set_system_visibility_state(true);
     };
 
-    view().on_reposition_window = [this](Gfx::IntPoint position) {
-        this->window().move_to(position);
-        return this->window().position();
+    view().on_reposition_window = [this](Web::DevicePixelPoint position) {
+        this->window().move_to(position.to_type<int>());
+        return this->window().position().to_type<Web::DevicePixels>();
     };
 
-    view().on_resize_window = [this](Gfx::IntSize size) {
-        this->window().resize(size);
-        return this->window().size();
+    view().on_resize_window = [this](Web::DevicePixelSize size) {
+        this->window().resize(size.to_type<int>());
+        return this->window().size().to_type<Web::DevicePixels>();
     };
 
     view().on_maximize_window = [this]() {
         this->window().set_maximized(true);
-        return this->window().rect();
+        return this->window().rect().to_type<Web::DevicePixels>();
     };
 
     view().on_minimize_window = [this]() {
         this->window().set_minimized(true);
         m_web_content_view->set_system_visibility_state(false);
-        return this->window().rect();
+        return this->window().rect().to_type<Web::DevicePixels>();
     };
 
     view().on_fullscreen_window = [this]() {
         this->window().set_fullscreen(true);
-        return this->window().rect();
+        return this->window().rect().to_type<Web::DevicePixels>();
     };
 
     m_link_context_menu = GUI::Menu::construct();

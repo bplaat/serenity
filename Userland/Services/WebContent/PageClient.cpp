@@ -67,7 +67,7 @@ PageClient::PageClient(PageHost& owner, u64 id)
         swap(backing_stores.front_bitmap_id, backing_stores.back_bitmap_id);
 
         m_paint_state = PaintState::WaitingForClient;
-        client().async_did_paint(viewport_rect.to_type<int>(), backing_stores.front_bitmap_id);
+        client().async_did_paint(viewport_rect, backing_stores.front_bitmap_id);
     });
 
 #ifdef HAS_ACCELERATED_GRAPHICS
@@ -226,7 +226,7 @@ void PageClient::page_did_layout()
         m_content_size = page().enclosing_device_rect(layout_root->paintable_box()->scrollable_overflow_rect().value()).size();
     else
         m_content_size = page().enclosing_device_rect(layout_root->paintable_box()->absolute_rect()).size();
-    client().async_did_layout(m_content_size.to_type<int>());
+    client().async_did_layout(m_content_size);
 }
 
 void PageClient::page_did_change_title(ByteString const& title)
@@ -249,12 +249,12 @@ void PageClient::page_did_request_refresh()
     client().async_did_request_refresh();
 }
 
-Gfx::IntSize PageClient::page_did_request_resize_window(Gfx::IntSize size)
+Web::DevicePixelSize PageClient::page_did_request_resize_window(Web::DevicePixelSize size)
 {
     return client().did_request_resize_window(size);
 }
 
-Gfx::IntPoint PageClient::page_did_request_reposition_window(Gfx::IntPoint position)
+Web::DevicePixelPoint PageClient::page_did_request_reposition_window(Web::DevicePixelPoint position)
 {
     return client().did_request_reposition_window(position);
 }
@@ -264,17 +264,17 @@ void PageClient::page_did_request_restore_window()
     client().async_did_request_restore_window();
 }
 
-Gfx::IntRect PageClient::page_did_request_maximize_window()
+Web::DevicePixelRect PageClient::page_did_request_maximize_window()
 {
     return client().did_request_maximize_window();
 }
 
-Gfx::IntRect PageClient::page_did_request_minimize_window()
+Web::DevicePixelRect PageClient::page_did_request_minimize_window()
 {
     return client().did_request_minimize_window();
 }
 
-Gfx::IntRect PageClient::page_did_request_fullscreen_window()
+Web::DevicePixelRect PageClient::page_did_request_fullscreen_window()
 {
     return client().did_request_fullscreen_window();
 }

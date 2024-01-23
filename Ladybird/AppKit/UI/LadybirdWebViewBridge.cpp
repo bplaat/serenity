@@ -168,7 +168,7 @@ Gfx::IntPoint WebViewBridge::to_content_position(Gfx::IntPoint widget_position) 
 
 Gfx::IntPoint WebViewBridge::to_widget_position(Gfx::IntPoint content_position) const
 {
-    return scale_for_device(content_position, inverse_device_pixel_ratio());
+    return scale_for_device(content_position, 1.0f / device_pixel_ratio());
 }
 
 void WebViewBridge::create_client()

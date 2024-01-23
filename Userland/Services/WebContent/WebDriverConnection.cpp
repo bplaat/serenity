@@ -74,14 +74,9 @@ static JsonValue serialize_rect(Gfx::IntRect const& rect)
     return serialized_rect;
 }
 
-static Gfx::IntRect compute_window_rect(Web::Page const& page)
+static Web::DevicePixelRect compute_window_rect(Web::Page const& page)
 {
-    return {
-        page.window_position().x(),
-        page.window_position().y(),
-        page.window_size().width(),
-        page.window_size().height()
-    };
+    return { page.window_position(), page.window_size() };
 }
 
 // https://w3c.github.io/webdriver/#dfn-calculate-the-absolute-position
@@ -606,7 +601,7 @@ Messages::WebDriverClient::GetWindowRectResponse WebDriverConnection::get_window
     TRY(handle_any_user_prompts());
 
     // 3. Return success with data set to the WindowRect object for the current top-level browsing context.
-    return serialize_rect(compute_window_rect(m_page_client.page()));
+    return serialize_rect(compute_window_rect(m_page_client.page()).to_type<int>());
 }
 
 // 11.8.2 Set Window Rect, https://w3c.github.io/webdriver/#dfn-set-window-rect
@@ -664,7 +659,7 @@ Messages::WebDriverClient::SetWindowRectResponse WebDriverConnection::set_window
     // 11. Restore the window.
     restore_the_window();
 
-    Gfx::IntRect window_rect;
+    Web::DevicePixelRect window_rect;
 
     // 11. If width and height are not null:
     if (width.has_value() && height.has_value()) {
@@ -673,7 +668,7 @@ Messages::WebDriverClient::SetWindowRectResponse WebDriverConnection::set_window
         auto size = m_page_client.page_did_request_resize_window({ *width, *height });
         window_rect.set_size(size);
     } else {
-        window_rect.set_size(m_page_client.page().window_size().to_type<int>());
+        window_rect.set_size(m_page_client.page().window_size());
     }
 
     // 12. If x and y are not null:
@@ -682,11 +677,11 @@ Messages::WebDriverClient::SetWindowRectResponse WebDriverConnection::set_window
         auto position = m_page_client.page_did_request_reposition_window({ *x, *y });
         window_rect.set_location(position);
     } else {
-        window_rect.set_location(m_page_client.page().window_position().to_type<int>());
+        window_rect.set_location(m_page_client.page().window_position());
     }
 
     // 14. Return success with data set to the WindowRect object for the current top-level browsing context.
-    return serialize_rect(window_rect);
+    return serialize_rect(window_rect.to_type<int>());
 }
 
 // 11.8.3 Maximize Window, https://w3c.github.io/webdriver/#dfn-maximize-window
@@ -709,7 +704,7 @@ Messages::WebDriverClient::MaximizeWindowResponse WebDriverConnection::maximize_
     auto window_rect = maximize_the_window();
 
     // 7. Return success with data set to the WindowRect object for the current top-level browsing context.
-    return serialize_rect(window_rect);
+    return serialize_rect(window_rect.to_type<int>());
 }
 
 // 11.8.4 Minimize Window, https://w3c.github.io/webdriver/#minimize-window
@@ -729,7 +724,7 @@ Messages::WebDriverClient::MinimizeWindowResponse WebDriverConnection::minimize_
     auto window_rect = iconify_the_window();
 
     // 6. Return success with data set to the WindowRect object for the current top-level browsing context.
-    return serialize_rect(window_rect);
+    return serialize_rect(window_rect.to_type<int>());
 }
 
 // 11.8.5 Fullscreen Window, https://w3c.github.io/webdriver/#dfn-fullscreen-window
@@ -752,7 +747,7 @@ Messages::WebDriverClient::FullscreenWindowResponse WebDriverConnection::fullscr
     auto rect = m_page_client.page_did_request_fullscreen_window();
 
     // 6. Return success with data set to the WindowRect object for the current top-level browsing context.
-    return serialize_rect(rect);
+    return serialize_rect(rect.to_type<int>());
 }
 
 // 12.3.2 Find Element, https://w3c.github.io/webdriver/#dfn-find-element
@@ -1951,7 +1946,7 @@ void WebDriverConnection::restore_the_window()
 }
 
 // https://w3c.github.io/webdriver/#dfn-maximize-the-window
-Gfx::IntRect WebDriverConnection::maximize_the_window()
+Web::DevicePixelRect WebDriverConnection::maximize_the_window()
 {
     // To maximize the window, given an operating system level window with an associated top-level browsing context, run the implementation-specific steps to transition the operating system level window into the maximized window state.
     auto rect = m_page_client.page_did_request_maximize_window();
@@ -1961,7 +1956,7 @@ Gfx::IntRect WebDriverConnection::maximize_the_window()
 }
 
 // https://w3c.github.io/webdriver/#dfn-iconify-the-window
-Gfx::IntRect WebDriverConnection::iconify_the_window()
+Web::DevicePixelRect WebDriverConnection::iconify_the_window()
 {
     // To iconify the window, given an operating system level window with an associated top-level browsing context, run implementation-specific steps to iconify, minimize, or hide the window from the visible screen.
     auto rect = m_page_client.page_did_request_minimize_window();

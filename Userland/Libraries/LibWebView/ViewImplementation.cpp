@@ -48,11 +48,11 @@ WebContentClient const& ViewImplementation::client() const
     return *m_client_state.client;
 }
 
-void ViewImplementation::server_did_paint(Badge<WebContentClient>, i32 bitmap_id, Gfx::IntSize size)
+void ViewImplementation::server_did_paint(Badge<WebContentClient>, i32 bitmap_id, Web::DevicePixelSize size)
 {
     if (m_client_state.back_bitmap.id == bitmap_id) {
         m_client_state.has_usable_bitmap = true;
-        m_client_state.back_bitmap.last_painted_size = size.to_type<Web::DevicePixels>();
+        m_client_state.back_bitmap.last_painted_size = size;
         swap(m_client_state.back_bitmap, m_client_state.front_bitmap);
         m_backup_bitmap = nullptr;
         if (on_ready_to_paint)

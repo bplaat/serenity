@@ -23,7 +23,7 @@ void WebContentClient::die()
     on_web_content_process_crash();
 }
 
-void WebContentClient::did_paint(Gfx::IntRect const& rect, i32 bitmap_id)
+void WebContentClient::did_paint(Web::DevicePixelRect const& rect, i32 bitmap_id)
 {
     m_view.server_did_paint({}, bitmap_id, rect.size());
 }
@@ -79,7 +79,7 @@ void WebContentClient::did_request_cursor_change(i32 cursor_type)
         m_view.on_cursor_change(static_cast<Gfx::StandardCursor>(cursor_type));
 }
 
-void WebContentClient::did_layout(Gfx::IntSize content_size)
+void WebContentClient::did_layout(Web::DevicePixelSize content_size)
 {
     dbgln_if(SPAM_DEBUG, "handle: WebContentClient::DidLayout! content_size={}", content_size);
     if (m_view.on_did_layout)
@@ -359,14 +359,14 @@ void WebContentClient::did_request_restore_window()
         m_view.on_restore_window();
 }
 
-Messages::WebContentClient::DidRequestRepositionWindowResponse WebContentClient::did_request_reposition_window(Gfx::IntPoint position)
+Messages::WebContentClient::DidRequestRepositionWindowResponse WebContentClient::did_request_reposition_window(Web::DevicePixelPoint position)
 {
     if (m_view.on_reposition_window)
         return m_view.on_reposition_window(position);
     return Gfx::IntPoint {};
 }
 
-Messages::WebContentClient::DidRequestResizeWindowResponse WebContentClient::did_request_resize_window(Gfx::IntSize size)
+Messages::WebContentClient::DidRequestResizeWindowResponse WebContentClient::did_request_resize_window(Web::DevicePixelSize size)
 {
     if (m_view.on_resize_window)
         return m_view.on_resize_window(size);

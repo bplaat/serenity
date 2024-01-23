@@ -30,8 +30,8 @@ OutOfProcessWebView::OutOfProcessWebView()
 
     create_client();
 
-    on_did_layout = [this](auto content_size) {
-        set_content_size(content_size);
+    on_did_layout = [this](Web::DevicePixelSize content_size) {
+        set_content_size(content_size.to_type<int>());
     };
 
     on_ready_to_paint = [this]() {

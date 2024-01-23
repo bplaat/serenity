@@ -79,11 +79,11 @@ WebContentView::WebContentView(WebContentOptions const& web_content_options, Str
 
     on_did_layout = [this](auto content_size) {
         verticalScrollBar()->setMinimum(0);
-        verticalScrollBar()->setMaximum(content_size.height() - m_viewport_rect.height());
-        verticalScrollBar()->setPageStep(m_viewport_rect.height());
+        verticalScrollBar()->setMaximum((content_size.height() - m_viewport_rect.height()).value());
+        verticalScrollBar()->setPageStep(m_viewport_rect.height().value());
         horizontalScrollBar()->setMinimum(0);
-        horizontalScrollBar()->setMaximum(content_size.width() - m_viewport_rect.width());
-        horizontalScrollBar()->setPageStep(m_viewport_rect.width());
+        horizontalScrollBar()->setMaximum((content_size.width() - m_viewport_rect.width()).value());
+        horizontalScrollBar()->setPageStep(m_viewport_rect.width().value());
     };
 
     on_ready_to_paint = [this]() {
@@ -511,20 +511,20 @@ void WebContentView::resizeEvent(QResizeEvent* event)
     handle_resize();
 }
 
-void WebContentView::set_viewport_rect(Gfx::IntRect rect)
+void WebContentView::set_viewport_rect(Web::DevicePixelRect rect)
 {
     m_viewport_rect = rect;
-    client().async_set_viewport_rect(rect.to_type<Web::DevicePixels>());
+    client().async_set_viewport_rect(rect);
 }
 
-void WebContentView::set_window_size(Gfx::IntSize size)
+void WebContentView::set_window_size(Web::DevicePixelSize size)
 {
-    client().async_set_window_size(size.to_type<Web::DevicePixels>());
+    client().async_set_window_size(size);
 }
 
-void WebContentView::set_window_position(Gfx::IntPoint position)
+void WebContentView::set_window_position(Web::DevicePixelPoint position)
 {
-    client().async_set_window_position(position.to_type<Web::DevicePixels>());
+    client().async_set_window_position(position);
 }
 
 void WebContentView::set_device_pixel_ratio(double device_pixel_ratio)
@@ -539,8 +539,7 @@ void WebContentView::update_viewport_rect()
 {
     auto scaled_width = int(viewport()->width() * m_device_pixel_ratio);
     auto scaled_height = int(viewport()->height() * m_device_pixel_ratio);
-    Gfx::IntRect rect(max(0, horizontalScrollBar()->value()), max(0, verticalScrollBar()->value()), scaled_width, scaled_height);
-
+    Web::DevicePixelRect rect(max(0, horizontalScrollBar()->value()), max(0, verticalScrollBar()->value()), scaled_width, scaled_height);
     set_viewport_rect(rect);
 }
 
@@ -706,7 +705,7 @@ void WebContentView::update_cursor(Gfx::StandardCursor cursor)
 
 Web::DevicePixelRect WebContentView::viewport_rect() const
 {
-    return m_viewport_rect.to_type<Web::DevicePixels>();
+    return m_viewport_rect;
 }
 
 Gfx::IntPoint WebContentView::to_content_position(Gfx::IntPoint widget_position) const

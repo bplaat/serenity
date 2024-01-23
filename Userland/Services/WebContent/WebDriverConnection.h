@@ -20,6 +20,7 @@
 #include <LibWeb/WebDriver/ElementLocationStrategies.h>
 #include <LibWeb/WebDriver/Response.h>
 #include <LibWeb/WebDriver/TimeoutsConfiguration.h>
+#include <LibWeb/PixelUnits.h>
 #include <WebContent/Forward.h>
 #include <WebContent/WebDriverClientEndpoint.h>
 #include <WebContent/WebDriverServerEndpoint.h>
@@ -102,8 +103,8 @@ private:
 
     ErrorOr<void, Web::WebDriver::Error> handle_any_user_prompts();
     void restore_the_window();
-    Gfx::IntRect maximize_the_window();
-    Gfx::IntRect iconify_the_window();
+    Web::DevicePixelRect maximize_the_window();
+    Web::DevicePixelRect iconify_the_window();
 
     ErrorOr<void, Web::WebDriver::Error> wait_for_navigation_to_complete();
 

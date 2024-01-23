@@ -271,28 +271,28 @@ Tab::Tab(BrowserWindow* window, WebContentOptions const& web_content_options, St
     };
 
     view().on_reposition_window = [this](auto const& position) {
-        m_window->move(position.x(), position.y());
-        return Gfx::IntPoint { m_window->x(), m_window->y() };
+        m_window->move(QPoint(position.x().value(), position.y().value()) / view().device_pixel_ratio());
+        return Web::DevicePixelPoint { m_window->x(), m_window->y() } * view().device_pixel_ratio();
     };
 
     view().on_resize_window = [this](auto const& size) {
-        m_window->resize(size.width(), size.height());
-        return Gfx::IntSize { m_window->width(), m_window->height() };
+        m_window->resize(QSize(size.width().value(), size.height().value()) / view().device_pixel_ratio());
+        return Web::DevicePixelSize { m_window->width(), m_window->height() } * view().device_pixel_ratio();
     };
 
     view().on_maximize_window = [this]() {
         m_window->showMaximized();
-        return Gfx::IntRect { m_window->x(), m_window->y(), m_window->width(), m_window->height() };
+        return Web::DevicePixelRect { m_window->x(), m_window->y(), m_window->width(), m_window->height() } * view().device_pixel_ratio();
     };
 
     view().on_minimize_window = [this]() {
         m_window->showMinimized();
-        return Gfx::IntRect { m_window->x(), m_window->y(), m_window->width(), m_window->height() };
+        return Web::DevicePixelRect { m_window->x(), m_window->y(), m_window->width(), m_window->height() } * view().device_pixel_ratio();
     };
 
     view().on_fullscreen_window = [this]() {
         m_window->showFullScreen();
-        return Gfx::IntRect { m_window->x(), m_window->y(), m_window->width(), m_window->height() };
+        return Web::DevicePixelRect { m_window->x(), m_window->y(), m_window->width(), m_window->height() } * view().device_pixel_ratio();
     };
 
     view().on_insert_clipboard_entry = [](auto const& data, auto const&, auto const& mime_type) {
