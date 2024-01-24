@@ -6,8 +6,8 @@
  */
 
 #include "SettingsDialog.h"
+#include "Conversions.h"
 #include "Settings.h"
-#include "StringUtils.h"
 #include <AK/URL.h>
 #include <LibWebView/SearchEngine.h>
 #include <QLabel>

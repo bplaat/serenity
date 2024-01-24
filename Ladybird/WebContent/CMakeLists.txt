@@ -17,10 +17,10 @@ set(WEBCONTENT_SOURCES
 if (ENABLE_QT)
     qt_add_executable(WebContent ${WEBCONTENT_SOURCES})
     target_sources(WebContent PRIVATE
+        ../Qt/Conversions.cpp
         ../Qt/EventLoopImplementationQt.cpp
         ../Qt/EventLoopImplementationQtEventTarget.cpp
         ../Qt/RequestManagerQt.cpp
-        ../Qt/StringUtils.cpp
         ../Qt/WebSocketClientManagerQt.cpp
         ../Qt/WebSocketQt.cpp
         ../Qt/WebSocketImplQt.cpp

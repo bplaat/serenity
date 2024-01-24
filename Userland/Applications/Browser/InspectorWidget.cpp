@@ -76,21 +76,23 @@ InspectorWidget::InspectorWidget(WebView::OutOfProcessWebView& content_view)
     m_dom_node_attribute_context_menu->add_action(*m_copy_node_action);
     m_dom_node_attribute_context_menu->add_action(*m_screenshot_node_action);
 
-    m_inspector_client->on_requested_dom_node_text_context_menu = [this](auto position) {
+    m_inspector_client->on_requested_dom_node_text_context_menu = [this](Web::DevicePixelPoint position) {
         m_edit_node_action->set_text("&Edit text");
         m_copy_node_action->set_text("&Copy text");
 
-        m_dom_node_text_context_menu->popup(to_widget_position(position));
+        auto screen_position = m_inspector_view->screen_relative_rect().location().translated(position.to_type<int>());
+        m_dom_node_attribute_context_menu->popup(screen_position);
     };
 
-    m_inspector_client->on_requested_dom_node_tag_context_menu = [this](auto position, auto const& tag) {
+    m_inspector_client->on_requested_dom_node_tag_context_menu = [this](Web::DevicePixelPoint position, auto const& tag) {
         m_edit_node_action->set_text(ByteString::formatted("&Edit \"{}\"", tag));
         m_copy_node_action->set_text("&Copy HTML");
 
-        m_dom_node_tag_context_menu->popup(to_widget_position(position));
+        auto screen_position = m_inspector_view->screen_relative_rect().location().translated(position.to_type<int>());
+        m_dom_node_attribute_context_menu->popup(screen_position);
     };
 
-    m_inspector_client->on_requested_dom_node_attribute_context_menu = [this](auto position, auto const&, auto const& attribute) {
+    m_inspector_client->on_requested_dom_node_attribute_context_menu = [this](Web::DevicePixelPoint position, auto const&, auto const& attribute) {
         static constexpr size_t MAX_ATTRIBUTE_VALUE_LENGTH = 32;
 
         m_copy_node_action->set_text("&Copy HTML");
@@ -100,7 +102,8 @@ InspectorWidget::InspectorWidget(WebView::OutOfProcessWebView& content_view)
             attribute.value, MAX_ATTRIBUTE_VALUE_LENGTH,
             attribute.value.bytes_as_string_view().length() > MAX_ATTRIBUTE_VALUE_LENGTH ? "..."sv : ""sv));
 
-        m_dom_node_attribute_context_menu->popup(to_widget_position(position));
+        auto screen_position = m_inspector_view->screen_relative_rect().location().translated(position.to_type<int>());
+        m_dom_node_attribute_context_menu->popup(screen_position);
     };
 
     m_inspector_view->set_focus(true);
@@ -126,11 +129,6 @@ void InspectorWidget::select_default_node()
 void InspectorWidget::select_hovered_node()
 {
     m_inspector_client->select_hovered_node();
-}
-
-Gfx::IntPoint InspectorWidget::to_widget_position(Gfx::IntPoint position) const
-{
-    return m_inspector_view->screen_relative_rect().location().translated(position);
 }
 
 }

@@ -132,7 +132,7 @@ public:
     void did_request_color_picker(WeakPtr<HTML::HTMLInputElement> target, Color current_color);
     void color_picker_update(Optional<Color> picked_color, HTML::ColorPickerUpdateState state);
 
-    void did_request_select_dropdown(WeakPtr<HTML::HTMLSelectElement> target, Web::CSSPixelPoint content_position, Web::CSSPixels minimum_width, Vector<Web::HTML::SelectItem> items);
+    void did_request_select_dropdown(WeakPtr<HTML::HTMLSelectElement> target, Web::CSSPixelPoint position, Web::CSSPixels minimum_width, Vector<Web::HTML::SelectItem> items);
     void select_dropdown_closed(Optional<String> value);
 
     enum class PendingNonBlockingDialog {
@@ -277,7 +277,7 @@ public:
     // https://html.spec.whatwg.org/multipage/input.html#show-the-picker,-if-applicable
     virtual void page_did_request_file_picker(WeakPtr<DOM::EventTarget>, [[maybe_unused]] bool multiple) {};
     virtual void page_did_request_color_picker([[maybe_unused]] Color current_color) {};
-    virtual void page_did_request_select_dropdown([[maybe_unused]] Web::CSSPixelPoint content_position, [[maybe_unused]] Web::CSSPixels minimum_width, [[maybe_unused]] Vector<Web::HTML::SelectItem> items) {};
+    virtual void page_did_request_select_dropdown([[maybe_unused]] Web::CSSPixelPoint position, [[maybe_unused]] Web::CSSPixels minimum_width, [[maybe_unused]] Vector<Web::HTML::SelectItem> items) {};
 
     virtual void page_did_finish_text_test() {};
 

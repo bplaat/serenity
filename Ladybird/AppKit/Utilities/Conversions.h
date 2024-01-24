@@ -9,9 +9,7 @@
 #include <AK/String.h>
 #include <AK/StringView.h>
 #include <LibGfx/Color.h>
-#include <LibGfx/Point.h>
-#include <LibGfx/Rect.h>
-#include <LibGfx/Size.h>
+#include <LibWeb/PixelUnits.h>
 
 #import <System/Cocoa.h>
 
@@ -24,14 +22,14 @@ NSData* string_to_ns_data(StringView);
 
 NSDictionary* deserialize_json_to_dictionary(StringView);
 
-Gfx::IntRect ns_rect_to_gfx_rect(NSRect);
-NSRect gfx_rect_to_ns_rect(Gfx::IntRect);
+Web::DevicePixelRect ns_rect_to_gfx_rect(NSRect, float device_pixel_ratio);
+NSRect gfx_rect_to_ns_rect(Web::DevicePixelRect, float device_pixel_ratio);
 
-Gfx::IntSize ns_size_to_gfx_size(NSSize);
-NSSize gfx_size_to_ns_size(Gfx::IntSize);
+Web::DevicePixelSize ns_size_to_gfx_size(NSSize, float device_pixel_ratio);
+NSSize gfx_size_to_ns_size(Web::DevicePixelSize, float device_pixel_ratio);
 
-Gfx::IntPoint ns_point_to_gfx_point(NSPoint);
-NSPoint gfx_point_to_ns_point(Gfx::IntPoint);
+Web::DevicePixelPoint ns_point_to_gfx_point(NSPoint, float device_pixel_ratio);
+NSPoint gfx_point_to_ns_point(Web::DevicePixelPoint, float device_pixel_ratio);
 
 Gfx::Color ns_color_to_gfx_color(NSColor*);
 NSColor* gfx_color_to_ns_color(Gfx::Color);

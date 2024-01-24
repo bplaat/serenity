@@ -5,7 +5,7 @@
  */
 
 #include "InspectorWidget.h"
-#include <Ladybird/Qt/StringUtils.h>
+#include "Conversions.h"
 #include <LibWebView/Attribute.h>
 #include <LibWebView/InspectorClient.h>
 #include <QAction>
@@ -96,14 +96,14 @@ InspectorWidget::InspectorWidget(QWidget* tab, WebContentView& content_view)
         m_edit_node_action->setText("&Edit text");
         m_copy_node_action->setText("&Copy text");
 
-        m_dom_node_text_context_menu->exec(to_widget_position(position));
+        m_dom_node_text_context_menu->exec(mapToGlobal(m_inspector_view->mapTo(this, device_pixel_point_to_qpoint(position, m_device_pixel_ratio))));
     };
 
     m_inspector_client->on_requested_dom_node_tag_context_menu = [this](auto position, auto const& tag) {
         m_edit_node_action->setText(qstring_from_ak_string(MUST(String::formatted("&Edit \"{}\"", tag))));
         m_copy_node_action->setText("&Copy HTML");
 
-        m_dom_node_tag_context_menu->exec(to_widget_position(position));
+        m_dom_node_tag_context_menu->exec(mapToGlobal(m_inspector_view->mapTo(this, device_pixel_point_to_qpoint(position, m_device_pixel_ratio))));
     };
 
     m_inspector_client->on_requested_dom_node_attribute_context_menu = [this](auto position, auto const&, WebView::Attribute const& attribute) {
@@ -116,7 +116,7 @@ InspectorWidget::InspectorWidget(QWidget* tab, WebContentView& content_view)
             attribute.value, MAX_ATTRIBUTE_VALUE_LENGTH,
             attribute.value.bytes_as_string_view().length() > MAX_ATTRIBUTE_VALUE_LENGTH ? "..."sv : ""sv))));
 
-        m_dom_node_attribute_context_menu->exec(to_widget_position(position));
+        m_dom_node_attribute_context_menu->exec(mapToGlobal(m_inspector_view->mapTo(this, device_pixel_point_to_qpoint(position, m_device_pixel_ratio))));
     };
 
     setLayout(new QVBoxLayout);
@@ -174,12 +174,6 @@ void InspectorWidget::closeEvent(QCloseEvent* event)
 {
     event->accept();
     m_inspector_client->clear_selection();
-}
-
-QPoint InspectorWidget::to_widget_position(Gfx::IntPoint position) const
-{
-    auto widget_position = m_inspector_view->mapTo(this, QPoint { position.x(), position.y() });
-    return mapToGlobal(widget_position);
 }
 
 }

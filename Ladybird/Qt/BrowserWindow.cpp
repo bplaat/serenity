@@ -8,10 +8,10 @@
  */
 
 #include "BrowserWindow.h"
+#include "Conversions.h"
 #include "Icon.h"
 #include "Settings.h"
 #include "SettingsDialog.h"
-#include "StringUtils.h"
 #include "WebContentView.h"
 #include <AK/TypeCasts.h>
 #include <Ladybird/Utilities.h>

@@ -5,7 +5,7 @@
  */
 
 #include "Icon.h"
-#include "StringUtils.h"
+#include "Conversions.h"
 #include <LibCore/Resource.h>
 
 namespace Ladybird {

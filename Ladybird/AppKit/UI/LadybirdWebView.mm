@@ -88,13 +88,13 @@ struct HideCursor {
         Vector<Web::DevicePixelRect> screen_rects;
         screen_rects.ensure_capacity([screens count]);
 
-        for (id screen in screens) {
-            auto screen_rect = Ladybird::ns_rect_to_gfx_rect([screen frame]).to_type<Web::DevicePixels>();
-            screen_rects.unchecked_append(screen_rect);
-        }
-
         // This returns device pixel ratio of the screen the window is opened in
         auto device_pixel_ratio = [[NSScreen mainScreen] backingScaleFactor];
+
+        for (id screen in screens) {
+            auto screen_rect = Ladybird::ns_rect_to_gfx_rect([screen frame], device_pixel_ratio);
+            screen_rects.unchecked_append(screen_rect);
+        }
 
         m_web_view_bridge = MUST(Ladybird::WebViewBridge::create(move(screen_rects), device_pixel_ratio, [delegate webContentOptions], [delegate webdriverContentIPCPath], [delegate preferredColorScheme]));
         [self setWebViewCallbacks];
@@ -220,7 +220,7 @@ static void copy_data_to_clipboard(StringView data, NSPasteboardType pasteboard_
         content_rect.size.width,
         content_rect.size.height);
 
-    auto viewport_rect = Ladybird::ns_rect_to_gfx_rect(ns_viewport_rect);
+    auto viewport_rect = Ladybird::ns_rect_to_gfx_rect(ns_viewport_rect, m_web_view_bridge->device_pixel_ratio());
     m_web_view_bridge->set_viewport_rect(viewport_rect, for_resize);
 }
 
@@ -242,8 +242,8 @@ static void copy_data_to_clipboard(StringView data, NSPasteboardType pasteboard_
 - (void)setWebViewCallbacks
 {
     m_web_view_bridge->on_did_layout = [self](auto content_size) {
-        auto device_pixel_ratio = m_web_view_bridge->device_pixel_ratio();
-        [[self documentView] setFrameSize:NSMakeSize(content_size.width().value() / device_pixel_ratio, content_size.height().value() / device_pixel_ratio)];
+        // auto device_pixel_ratio = m_web_view_bridge->device_pixel_ratio();
+        [[self documentView] setFrameSize:NSMakeSize(content_size.width().value(), content_size.height().value())];
     };
 
     m_web_view_bridge->on_ready_to_paint = [self]() {
@@ -285,7 +285,7 @@ static void copy_data_to_clipboard(StringView data, NSPasteboardType pasteboard_
     m_web_view_bridge->on_scroll = [self](auto position) {
         auto content_rect = [self frame];
         auto document_rect = [[self documentView] frame];
-        auto ns_position = Ladybird::gfx_point_to_ns_point(position);
+        auto ns_position = Ladybird::gfx_point_to_ns_point(position, m_web_view_bridge->device_pixel_ratio());
 
         ns_position.x = max(ns_position.x, document_rect.origin.x);
         ns_position.x = min(ns_position.x, document_rect.size.width - content_rect.size.width);
@@ -450,7 +450,7 @@ static void copy_data_to_clipboard(StringView data, NSPasteboardType pasteboard_
         [NSMenu popUpContextMenu:self.page_context_menu withEvent:event forView:self];
     };
 
-    m_web_view_bridge->on_link_context_menu_request = [self](auto const& url, auto position) {
+    m_web_view_bridge->on_link_context_menu_request = [self](auto position, auto const& url) {
         TemporaryChange change_url { m_context_menu_url, url };
 
         auto* copy_link_menu_item = [self.link_context_menu itemWithTag:CONTEXT_MENU_COPY_LINK_TAG];
@@ -471,7 +471,7 @@ static void copy_data_to_clipboard(StringView data, NSPasteboardType pasteboard_
         [NSMenu popUpContextMenu:self.link_context_menu withEvent:event forView:self];
     };
 
-    m_web_view_bridge->on_image_context_menu_request = [self](auto const& url, auto position, auto const& bitmap) {
+    m_web_view_bridge->on_image_context_menu_request = [self](auto position, auto const& url, auto const& bitmap) {
         TemporaryChange change_url { m_context_menu_url, url };
         TemporaryChange change_bitmap { m_context_menu_bitmap, bitmap };
 
@@ -614,15 +614,15 @@ static void copy_data_to_clipboard(StringView data, NSPasteboardType pasteboard_
     self.select_dropdown = [[NSMenu alloc] initWithTitle:@"Select Dropdown"];
     [self.select_dropdown setDelegate:self];
 
-    m_web_view_bridge->on_request_select_dropdown = [self](Gfx::IntPoint content_position, i32 minimum_width, Vector<Web::HTML::SelectItem> items) {
+    m_web_view_bridge->on_request_select_dropdown = [self](Web::DevicePixelPoint position, Web::DevicePixels minimum_width, Vector<Web::HTML::SelectItem> items) {
         [self.select_dropdown removeAllItems];
-        self.select_dropdown.minimumWidth = minimum_width;
+        self.select_dropdown.minimumWidth = minimum_width.value() / m_web_view_bridge->device_pixel_ratio();
         for (auto const& item : items) {
             [self selectDropdownAdd:self.select_dropdown
                                item:item];
         }
 
-        auto* event = Ladybird::create_context_menu_mouse_event(self, content_position);
+        auto* event = Ladybird::create_context_menu_mouse_event(self, position);
         [NSMenu popUpContextMenu:self.select_dropdown withEvent:event forView:self];
     };
 
@@ -656,33 +656,33 @@ static void copy_data_to_clipboard(StringView data, NSPasteboardType pasteboard_
         [[self window] orderFront:nil];
     };
 
-    m_web_view_bridge->on_reposition_window = [self](Web::DevicePixelPoint const& position) {
+    m_web_view_bridge->on_reposition_window = [self](auto const& position) {
         auto frame = [[self window] frame];
-        frame.origin = Ladybird::gfx_point_to_ns_point(position.to_type<int>());
+        frame.origin = Ladybird::gfx_point_to_ns_point(position, m_web_view_bridge->device_pixel_ratio());
         [[self window] setFrame:frame display:YES];
 
-        return Ladybird::ns_point_to_gfx_point([[self window] frame].origin).to_type<Web::DevicePixels>();
+        return Ladybird::ns_point_to_gfx_point([[self window] frame].origin, m_web_view_bridge->device_pixel_ratio());
     };
 
-    m_web_view_bridge->on_resize_window = [self](Web::DevicePixelSize const& size) {
+    m_web_view_bridge->on_resize_window = [self](auto const& size) {
         auto frame = [[self window] frame];
-        frame.size = Ladybird::gfx_size_to_ns_size(size.to_type<int>());
+        frame.size = Ladybird::gfx_size_to_ns_size(size, m_web_view_bridge->device_pixel_ratio());
         [[self window] setFrame:frame display:YES];
 
-        return Ladybird::ns_size_to_gfx_size([[self window] frame].size).to_type<Web::DevicePixels>();
+        return Ladybird::ns_size_to_gfx_size([[self window] frame].size, m_web_view_bridge->device_pixel_ratio());
     };
 
     m_web_view_bridge->on_maximize_window = [self]() {
         auto frame = [[NSScreen mainScreen] frame];
         [[self window] setFrame:frame display:YES];
 
-        return Ladybird::ns_rect_to_gfx_rect([[self window] frame]).to_type<Web::DevicePixels>();
+        return Ladybird::ns_rect_to_gfx_rect([[self window] frame], m_web_view_bridge->device_pixel_ratio());
     };
 
     m_web_view_bridge->on_minimize_window = [self]() {
         [[self window] setIsMiniaturized:YES];
 
-        return Ladybird::ns_rect_to_gfx_rect([[self window] frame]).to_type<Web::DevicePixels>();
+        return Ladybird::ns_rect_to_gfx_rect([[self window] frame], m_web_view_bridge->device_pixel_ratio());
     };
 
     m_web_view_bridge->on_fullscreen_window = [self]() {
@@ -690,7 +690,7 @@ static void copy_data_to_clipboard(StringView data, NSPasteboardType pasteboard_
             [[self window] toggleFullScreen:nil];
         }
 
-        return Ladybird::ns_rect_to_gfx_rect([[self window] frame]).to_type<Web::DevicePixels>();
+        return Ladybird::ns_rect_to_gfx_rect([[self window] frame], m_web_view_bridge->device_pixel_ratio());
     };
 
     m_web_view_bridge->on_received_source = [self](auto const& url, auto const& source) {

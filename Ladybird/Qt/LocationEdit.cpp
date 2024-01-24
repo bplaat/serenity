@@ -5,8 +5,8 @@
  */
 
 #include "LocationEdit.h"
+#include "Conversions.h"
 #include "Settings.h"
-#include "StringUtils.h"
 #include <AK/URL.h>
 #include <LibWebView/URL.h>
 #include <QApplication>

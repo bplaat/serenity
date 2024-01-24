@@ -24,16 +24,16 @@ endpoint WebContentClient
     did_change_title(ByteString title) =|
     did_request_scroll(Web::DevicePixels delta_x, Web::DevicePixels delta_y) =|
     did_request_scroll_to(Web::DevicePixelPoint scroll_position) =|
-    did_enter_tooltip_area(Gfx::IntPoint content_position, ByteString title) =|
+    did_enter_tooltip_area(Web::DevicePixelPoint position, ByteString title) =|
     did_leave_tooltip_area() =|
     did_hover_link(URL url) =|
     did_unhover_link() =|
     did_click_link(URL url, ByteString target, unsigned modifiers) =|
     did_middle_click_link(URL url, ByteString target, unsigned modifiers) =|
-    did_request_context_menu(Gfx::IntPoint content_position) =|
-    did_request_link_context_menu(Gfx::IntPoint content_position, URL url, ByteString target, unsigned modifiers) =|
-    did_request_image_context_menu(Gfx::IntPoint content_position, URL url, ByteString target, unsigned modifiers, Gfx::ShareableBitmap bitmap) =|
-    did_request_media_context_menu(Gfx::IntPoint content_position, ByteString target, unsigned modifiers, Web::Page::MediaContextMenu menu) =|
+    did_request_context_menu(Web::DevicePixelPoint position) =|
+    did_request_link_context_menu(Web::DevicePixelPoint position, URL url, ByteString target, unsigned modifiers) =|
+    did_request_image_context_menu(Web::DevicePixelPoint position, URL url, ByteString target, unsigned modifiers, Gfx::ShareableBitmap bitmap) =|
+    did_request_media_context_menu(Web::DevicePixelPoint position, ByteString target, unsigned modifiers, Web::Page::MediaContextMenu menu) =|
     did_request_alert(String message) =|
     did_request_confirm(String message) =|
     did_request_prompt(String message, String default_) =|
@@ -69,7 +69,7 @@ endpoint WebContentClient
     did_request_fullscreen_window() => (Web::DevicePixelRect window_rect)
     did_request_file(ByteString path, i32 request_id) =|
     did_request_color_picker(Color current_color) =|
-    did_request_select_dropdown(Gfx::IntPoint content_position, i32 minimum_width, Vector<Web::HTML::SelectItem> items) =|
+    did_request_select_dropdown(Web::DevicePixelPoint position, Web::DevicePixels minimum_width, Vector<Web::HTML::SelectItem> items) =|
     did_finish_handling_input_event(bool event_was_accepted) =|
     did_change_theme_color(Gfx::Color color) =|
     did_insert_clipboard_entry(String data, String presentation_style, String mime_type) =|
@@ -87,6 +87,6 @@ endpoint WebContentClient
     inspector_did_set_dom_node_tag(i32 node_id, String tag) =|
     inspector_did_add_dom_node_attributes(i32 node_id, Vector<WebView::Attribute> attributes) =|
     inspector_did_replace_dom_node_attribute(i32 node_id, String name, Vector<WebView::Attribute> replacement_attributes) =|
-    inspector_did_request_dom_tree_context_menu(i32 node_id, Gfx::IntPoint position, String type, Optional<String> tag, Optional<WebView::Attribute> attribute) =|
+    inspector_did_request_dom_tree_context_menu(i32 node_id, Web::DevicePixelPoint position, String type, Optional<String> tag, Optional<WebView::Attribute> attribute) =|
     inspector_did_execute_console_script(String script) =|
 }

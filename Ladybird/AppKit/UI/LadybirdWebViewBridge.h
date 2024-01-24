@@ -35,16 +35,16 @@ public:
         Yes,
         No,
     };
-    void set_viewport_rect(Gfx::IntRect, ForResize = ForResize::No);
+    void set_viewport_rect(Web::DevicePixelRect, ForResize = ForResize::No);
 
     void update_palette();
     void set_preferred_color_scheme(Web::CSS::PreferredColorScheme);
 
-    void mouse_down_event(Gfx::IntPoint, Gfx::IntPoint, GUI::MouseButton, KeyModifier);
-    void mouse_up_event(Gfx::IntPoint, Gfx::IntPoint, GUI::MouseButton, KeyModifier);
-    void mouse_move_event(Gfx::IntPoint, Gfx::IntPoint, GUI::MouseButton, KeyModifier);
-    void mouse_wheel_event(Gfx::IntPoint, Gfx::IntPoint, GUI::MouseButton, KeyModifier, int, int);
-    void mouse_double_click_event(Gfx::IntPoint, Gfx::IntPoint, GUI::MouseButton, KeyModifier);
+    void mouse_down_event(Web::DevicePixelPoint, Web::DevicePixelPoint, GUI::MouseButton, KeyModifier);
+    void mouse_up_event(Web::DevicePixelPoint, Web::DevicePixelPoint, GUI::MouseButton, KeyModifier);
+    void mouse_move_event(Web::DevicePixelPoint, Web::DevicePixelPoint, GUI::MouseButton, KeyModifier);
+    void mouse_wheel_event(Web::DevicePixelPoint, Web::DevicePixelPoint, GUI::MouseButton, KeyModifier, Web::DevicePixels, Web::DevicePixels);
+    void mouse_double_click_event(Web::DevicePixelPoint, Web::DevicePixelPoint, GUI::MouseButton, KeyModifier);
 
     void key_down_event(KeyCode, KeyModifier, u32);
     void key_up_event(KeyCode, KeyModifier, u32);
@@ -56,20 +56,18 @@ public:
     Optional<Paintable> paintable();
 
     Function<void()> on_zoom_level_changed;
-    Function<void(Gfx::IntPoint)> on_scroll;
+    Function<void(Web::DevicePixelPoint)> on_scroll;
 
 private:
     WebViewBridge(Vector<Web::DevicePixelRect> screen_rects, float device_pixel_ratio, WebContentOptions const&, Optional<StringView> webdriver_content_ipc_path, Web::CSS::PreferredColorScheme);
 
     virtual void update_zoom() override;
     virtual Web::DevicePixelRect viewport_rect() const override;
-    virtual Gfx::IntPoint to_content_position(Gfx::IntPoint widget_position) const override;
-    virtual Gfx::IntPoint to_widget_position(Gfx::IntPoint content_position) const override;
 
     virtual void create_client() override;
 
     Vector<Web::DevicePixelRect> m_screen_rects;
-    Gfx::IntRect m_viewport_rect;
+    Web::DevicePixelRect m_viewport_rect;
 
     WebContentOptions m_web_content_options;
     Optional<StringView> m_webdriver_content_ipc_path;

@@ -161,11 +161,8 @@ private:
         };
 
         on_scroll_by_delta = [this](Web::DevicePixels delta_x, Web::DevicePixels delta_y) {
-            auto position = m_viewport_rect.location();
-            position.set_x(position.x() + delta_x);
-            position.set_y(position.y() + delta_y);
             if (on_scroll_to_point)
-                on_scroll_to_point(position);
+                on_scroll_to_point(m_viewport_rect.location().translated(Web::DevicePixelPoint { delta_x, delta_y }));
         };
 
         on_get_cookie = [this](auto const& url, auto source) -> ByteString {
@@ -190,8 +187,6 @@ private:
     void create_client() override { }
 
     virtual Web::DevicePixelRect viewport_rect() const override { return m_viewport_rect; }
-    virtual Gfx::IntPoint to_content_position(Gfx::IntPoint widget_position) const override { return widget_position; }
-    virtual Gfx::IntPoint to_widget_position(Gfx::IntPoint content_position) const override { return content_position; }
 
 private:
     Web::DevicePixelRect m_viewport_rect;

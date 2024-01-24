@@ -150,8 +150,10 @@ ErrorOr<void> MainWidget::initialize_fallibles(GUI::Window& window)
             open_external(url);
         }
     };
-    m_web_view->on_context_menu_request = [this](auto screen_position) {
+    m_web_view->on_context_menu_request = [this](Web::DevicePixelPoint position) {
         m_copy_action->set_enabled(!m_web_view->selected_text().is_empty());
+
+        auto screen_position = m_web_view->screen_relative_rect().location().translated(position.to_type<int>());
         m_context_menu->popup(screen_position);
     };
     m_web_view->on_link_hover = [this](URL const& url) {

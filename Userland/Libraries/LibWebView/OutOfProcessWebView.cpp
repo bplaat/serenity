@@ -148,16 +148,6 @@ Web::DevicePixelRect OutOfProcessWebView::viewport_rect() const
     return visible_content_rect().to_type<Web::DevicePixels>();
 }
 
-Gfx::IntPoint OutOfProcessWebView::to_content_position(Gfx::IntPoint widget_position) const
-{
-    return GUI::AbstractScrollableWidget::to_content_position(widget_position);
-}
-
-Gfx::IntPoint OutOfProcessWebView::to_widget_position(Gfx::IntPoint content_position) const
-{
-    return GUI::AbstractScrollableWidget::to_widget_position(content_position);
-}
-
 void OutOfProcessWebView::update_zoom()
 {
     client().async_set_device_pixels_per_css_pixel(m_device_pixel_ratio * m_zoom_level);
@@ -337,7 +327,7 @@ void OutOfProcessWebView::process_next_input_event()
             }
         },
         [this](GUI::MouseEvent const& event) {
-            auto position = to_content_position(event.position()).to_type<Web::DevicePixels>();
+            auto position = event.position().to_type<Web::DevicePixels>();
             auto screen_position = (event.position() + (window()->position() + relative_position())).to_type<Web::DevicePixels>();
             switch (event.type()) {
             case GUI::Event::Type::MouseDown:

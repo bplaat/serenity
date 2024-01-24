@@ -84,6 +84,7 @@ executable("ladybird_executable") {
     sources += [
       "Qt/AutoComplete.cpp",
       "Qt/BrowserWindow.cpp",
+      "Qt/Conversions.cpp",
       "Qt/EventLoopImplementationQt.cpp",
       "Qt/EventLoopImplementationQtEventTarget.cpp",
       "Qt/Icon.cpp",
@@ -91,7 +92,6 @@ executable("ladybird_executable") {
       "Qt/LocationEdit.cpp",
       "Qt/Settings.cpp",
       "Qt/SettingsDialog.cpp",
-      "Qt/StringUtils.cpp",
       "Qt/TVGIconEngine.cpp",
       "Qt/Tab.cpp",
       "Qt/WebContentView.cpp",

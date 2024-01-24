@@ -8,7 +8,7 @@
  */
 
 #include "WebSocketImplQt.h"
-#include "StringUtils.h"
+#include "Conversions.h"
 #include <LibCore/EventLoop.h>
 #include <QSslSocket>
 #include <QTcpSocket>

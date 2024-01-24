@@ -322,7 +322,7 @@ Tab::Tab(BrowserWindow& window)
     m_link_context_menu->add_separator();
     m_link_context_menu->add_action(window.inspect_dom_node_action());
 
-    view().on_link_context_menu_request = [this](auto& url, auto widget_position) {
+    view().on_link_context_menu_request = [this](Web::DevicePixelPoint position, auto& url) {
         m_link_context_menu_url = url;
 
         switch (WebView::url_type(url)) {
@@ -337,7 +337,7 @@ Tab::Tab(BrowserWindow& window)
             break;
         }
 
-        auto screen_position = view().screen_relative_rect().location().translated(widget_position);
+        auto screen_position = view().screen_relative_rect().location().translated(position.to_type<int>());
         m_link_context_menu->popup(screen_position, m_link_context_menu_default_action);
     };
 
@@ -363,11 +363,11 @@ Tab::Tab(BrowserWindow& window)
     m_image_context_menu->add_separator();
     m_image_context_menu->add_action(window.inspect_dom_node_action());
 
-    view().on_image_context_menu_request = [this](auto& image_url, auto widget_position, Gfx::ShareableBitmap const& shareable_bitmap) {
+    view().on_image_context_menu_request = [this](Web::DevicePixelPoint position, auto& image_url, Gfx::ShareableBitmap const& shareable_bitmap) {
         m_image_context_menu_url = image_url;
         m_image_context_menu_bitmap = shareable_bitmap;
 
-        auto screen_position = view().screen_relative_rect().location().translated(widget_position);
+        auto screen_position = view().screen_relative_rect().location().translated(position.to_type<int>());
         m_image_context_menu->popup(screen_position);
     };
 
@@ -430,7 +430,7 @@ Tab::Tab(BrowserWindow& window)
     m_video_context_menu->add_separator();
     m_video_context_menu->add_action(window.inspect_dom_node_action());
 
-    view().on_media_context_menu_request = [this](auto widget_position, Web::Page::MediaContextMenu const& menu) {
+    view().on_media_context_menu_request = [this](Web::DevicePixelPoint position, Web::Page::MediaContextMenu const& menu) {
         m_media_context_menu_url = menu.media_url;
 
         if (menu.is_playing) {
@@ -452,8 +452,7 @@ Tab::Tab(BrowserWindow& window)
         m_media_context_menu_controls_action->set_checked(menu.has_user_agent_controls);
         m_media_context_menu_loop_action->set_checked(menu.is_looping);
 
-        auto screen_position = view().screen_relative_rect().location().translated(widget_position);
-
+        auto screen_position = view().screen_relative_rect().location().translated(position.to_type<int>());
         if (menu.is_video)
             m_video_context_menu->popup(screen_position);
         else
@@ -588,7 +587,7 @@ Tab::Tab(BrowserWindow& window)
             view().select_dropdown_closed({});
     };
 
-    view().on_request_select_dropdown = [this](Gfx::IntPoint content_position, i32, Vector<Web::HTML::SelectItem> items) {
+    view().on_request_select_dropdown = [this](Web::DevicePixelPoint position, Web::DevicePixels, Vector<Web::HTML::SelectItem> items) {
         m_select_dropdown_closed_by_action = false;
         m_select_dropdown->remove_all_actions();
         // FIXME: Set menu minimum width
@@ -596,7 +595,8 @@ Tab::Tab(BrowserWindow& window)
             select_dropdown_add_item(*m_select_dropdown, item);
         }
 
-        m_select_dropdown->popup(view().screen_relative_rect().location().translated(content_position));
+        auto screen_position = view().screen_relative_rect().location().translated(position.to_type<int>());
+        m_select_dropdown->popup(screen_position);
     };
 
     view().on_received_source = [this](auto& url, auto& source) {
@@ -713,7 +713,7 @@ Tab::Tab(BrowserWindow& window)
             m_page_context_menu_search_text = {};
     };
 
-    view().on_context_menu_request = [&, search_selected_text_action = move(search_selected_text_action)](auto widget_position) {
+    view().on_context_menu_request = [&, search_selected_text_action = move(search_selected_text_action)](Web::DevicePixelPoint position) {
         m_page_context_menu_search_text = g_search_engine.is_empty()
             ? OptionalNone {}
             : view().selected_text_with_whitespace_collapsed();
@@ -726,7 +726,7 @@ Tab::Tab(BrowserWindow& window)
             search_selected_text_action->set_visible(false);
         }
 
-        auto screen_position = view().screen_relative_rect().location().translated(widget_position);
+        auto screen_position = view().screen_relative_rect().location().translated(position.to_type<int>());
         m_page_context_menu->popup(screen_position);
     };
 }

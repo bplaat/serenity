@@ -297,9 +297,9 @@ void PageClient::page_did_request_scroll_to(Web::CSSPixelPoint scroll_position)
     client().async_did_request_scroll_to(device_scroll_position);
 }
 
-void PageClient::page_did_enter_tooltip_area(Web::CSSPixelPoint content_position, ByteString const& title)
+void PageClient::page_did_enter_tooltip_area(Web::CSSPixelPoint position, ByteString const& title)
 {
-    client().async_did_enter_tooltip_area({ content_position.x().to_int(), content_position.y().to_int() }, title);
+    client().async_did_enter_tooltip_area(page().css_to_device_point(position), title);
 }
 
 void PageClient::page_did_leave_tooltip_area()
@@ -347,25 +347,25 @@ void PageClient::page_did_finish_text_test()
     client().async_did_finish_text_test();
 }
 
-void PageClient::page_did_request_context_menu(Web::CSSPixelPoint content_position)
+void PageClient::page_did_request_context_menu(Web::CSSPixelPoint position)
 {
-    client().async_did_request_context_menu(page().css_to_device_point(content_position).to_type<int>());
+    client().async_did_request_context_menu(page().css_to_device_point(position));
 }
 
-void PageClient::page_did_request_link_context_menu(Web::CSSPixelPoint content_position, URL const& url, ByteString const& target, unsigned modifiers)
+void PageClient::page_did_request_link_context_menu(Web::CSSPixelPoint position, URL const& url, ByteString const& target, unsigned modifiers)
 {
-    client().async_did_request_link_context_menu(page().css_to_device_point(content_position).to_type<int>(), url, target, modifiers);
+    client().async_did_request_link_context_menu(page().css_to_device_point(position), url, target, modifiers);
 }
 
-void PageClient::page_did_request_image_context_menu(Web::CSSPixelPoint content_position, URL const& url, ByteString const& target, unsigned modifiers, Gfx::Bitmap const* bitmap_pointer)
+void PageClient::page_did_request_image_context_menu(Web::CSSPixelPoint position, URL const& url, ByteString const& target, unsigned modifiers, Gfx::Bitmap const* bitmap_pointer)
 {
     auto bitmap = bitmap_pointer ? bitmap_pointer->to_shareable_bitmap() : Gfx::ShareableBitmap();
-    client().async_did_request_image_context_menu(page().css_to_device_point(content_position).to_type<int>(), url, target, modifiers, bitmap);
+    client().async_did_request_image_context_menu(page().css_to_device_point(position), url, target, modifiers, bitmap);
 }
 
-void PageClient::page_did_request_media_context_menu(Web::CSSPixelPoint content_position, ByteString const& target, unsigned modifiers, Web::Page::MediaContextMenu menu)
+void PageClient::page_did_request_media_context_menu(Web::CSSPixelPoint position, ByteString const& target, unsigned modifiers, Web::Page::MediaContextMenu menu)
 {
-    client().async_did_request_media_context_menu(page().css_to_device_point(content_position).to_type<int>(), target, modifiers, move(menu));
+    client().async_did_request_media_context_menu(page().css_to_device_point(position), target, modifiers, move(menu));
 }
 
 void PageClient::page_did_request_alert(String const& message)
@@ -517,9 +517,9 @@ void PageClient::page_did_request_color_picker(Color current_color)
     client().async_did_request_color_picker(current_color);
 }
 
-void PageClient::page_did_request_select_dropdown(Web::CSSPixelPoint content_position, Web::CSSPixels minimum_width, Vector<Web::HTML::SelectItem> items)
+void PageClient::page_did_request_select_dropdown(Web::CSSPixelPoint position, Web::CSSPixels minimum_width, Vector<Web::HTML::SelectItem> items)
 {
-    client().async_did_request_select_dropdown(page().css_to_device_point(content_position).to_type<int>(), minimum_width * device_pixels_per_css_pixel(), items);
+    client().async_did_request_select_dropdown(page().css_to_device_point(position), minimum_width * device_pixels_per_css_pixel(), items);
 }
 
 void PageClient::page_did_change_theme_color(Gfx::Color color)
@@ -594,7 +594,7 @@ void PageClient::inspector_did_request_dom_tree_context_menu(i32 node_id, Web::C
     if (attribute_name.has_value() && attribute_value.has_value())
         attribute = WebView::Attribute { *attribute_name, *attribute_value };
 
-    client().async_inspector_did_request_dom_tree_context_menu(node_id, page().css_to_device_point(position).to_type<int>(), type, tag, move(attribute));
+    client().async_inspector_did_request_dom_tree_context_menu(node_id, page().css_to_device_point(position), type, tag, move(attribute));
 }
 
 void PageClient::inspector_did_execute_console_script(String const& script)

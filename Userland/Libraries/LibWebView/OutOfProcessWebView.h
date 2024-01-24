@@ -82,8 +82,6 @@ private:
     virtual void update_zoom() override;
 
     virtual Web::DevicePixelRect viewport_rect() const override;
-    virtual Gfx::IntPoint to_content_position(Gfx::IntPoint widget_position) const override;
-    virtual Gfx::IntPoint to_widget_position(Gfx::IntPoint content_position) const override;
 
     using InputEvent = Variant<GUI::KeyEvent, GUI::MouseEvent>;
     void enqueue_input_event(InputEvent const&);

@@ -41,53 +41,40 @@ NSDictionary* deserialize_json_to_dictionary(StringView json)
     return dictionary;
 }
 
-Gfx::IntRect ns_rect_to_gfx_rect(NSRect rect)
+Web::DevicePixelRect ns_rect_to_gfx_rect(NSRect rect, float device_pixel_ratio)
 {
-    return {
-        static_cast<int>(rect.origin.x),
-        static_cast<int>(rect.origin.y),
-        static_cast<int>(rect.size.width),
-        static_cast<int>(rect.size.height),
-    };
+    return { rect.origin.x * device_pixel_ratio, rect.origin.y * device_pixel_ratio,
+        rect.size.width * device_pixel_ratio, rect.size.height * device_pixel_ratio };
 }
 
-NSRect gfx_rect_to_ns_rect(Gfx::IntRect rect)
+NSRect gfx_rect_to_ns_rect(Web::DevicePixelRect rect, float device_pixel_ratio)
 {
-    return NSMakeRect(
-        static_cast<CGFloat>(rect.x()),
-        static_cast<CGFloat>(rect.y()),
-        static_cast<CGFloat>(rect.width()),
-        static_cast<CGFloat>(rect.height()));
+    return NSMakeRect(rect.x().value() / device_pixel_ratio,
+        rect.y().value() / device_pixel_ratio,
+        rect.width().value() / device_pixel_ratio,
+        rect.height().value() / device_pixel_ratio);
 }
 
-Gfx::IntSize ns_size_to_gfx_size(NSSize size)
+Web::DevicePixelSize ns_size_to_gfx_size(NSSize size, float device_pixel_ratio)
 {
-    return {
-        static_cast<int>(size.width),
-        static_cast<int>(size.height),
-    };
+    return { size.width * device_pixel_ratio, size.height * device_pixel_ratio };
 }
 
-NSSize gfx_size_to_ns_size(Gfx::IntSize size)
+NSSize gfx_size_to_ns_size(Web::DevicePixelSize size, float device_pixel_ratio)
 {
-    return NSMakeSize(
-        static_cast<CGFloat>(size.width()),
-        static_cast<CGFloat>(size.height()));
+    return NSMakeSize(size.width().value() / device_pixel_ratio,
+        size.height().value() / device_pixel_ratio);
 }
 
-Gfx::IntPoint ns_point_to_gfx_point(NSPoint point)
+Web::DevicePixelPoint ns_point_to_gfx_point(NSPoint point, float device_pixel_ratio)
 {
-    return {
-        static_cast<int>(point.x),
-        static_cast<int>(point.y),
-    };
+    return { point.x * device_pixel_ratio, point.y * device_pixel_ratio };
 }
 
-NSPoint gfx_point_to_ns_point(Gfx::IntPoint point)
+NSPoint gfx_point_to_ns_point(Web::DevicePixelPoint point, float device_pixel_ratio)
 {
-    return NSMakePoint(
-        static_cast<CGFloat>(point.x()),
-        static_cast<CGFloat>(point.y()));
+    return NSMakePoint(point.x().value() / device_pixel_ratio,
+        point.y().value() / device_pixel_ratio);
 }
 
 Gfx::Color ns_color_to_gfx_color(NSColor* color)

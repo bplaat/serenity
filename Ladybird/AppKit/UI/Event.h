@@ -9,20 +9,21 @@
 // FIXME: These should not be included outside of Serenity.
 #include <Kernel/API/KeyCode.h>
 #include <LibGUI/Event.h>
+#include <LibWeb/PixelUnits.h>
 
 #import <System/Cocoa.h>
 
 namespace Ladybird {
 
 struct MouseEvent {
-    Gfx::IntPoint position {};
-    Gfx::IntPoint screen_position {};
+    Web::DevicePixelPoint position {};
+    Web::DevicePixelPoint screen_position {};
     GUI::MouseButton button { GUI::MouseButton::Primary };
     KeyModifier modifiers { KeyModifier::Mod_None };
 };
-MouseEvent ns_event_to_mouse_event(NSEvent*, NSView*, GUI::MouseButton);
+MouseEvent ns_event_to_mouse_event(NSEvent*, NSClipView*, GUI::MouseButton);
 
-NSEvent* create_context_menu_mouse_event(NSView*, Gfx::IntPoint);
+NSEvent* create_context_menu_mouse_event(NSClipView*, Web::DevicePixelPoint);
 NSEvent* create_context_menu_mouse_event(NSView*, NSPoint);
 
 struct KeyEvent {

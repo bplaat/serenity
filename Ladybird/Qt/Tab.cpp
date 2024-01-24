@@ -6,10 +6,10 @@
  */
 
 #include "BrowserWindow.h"
+#include "Conversions.h"
 #include "Icon.h"
 #include "InspectorWidget.h"
 #include "Settings.h"
-#include "StringUtils.h"
 #include "TVGIconEngine.h"
 #include <AK/TemporaryChange.h>
 #include <LibGfx/ImageFormats/BMPWriter.h>
@@ -237,14 +237,14 @@ Tab::Tab(BrowserWindow* window, WebContentOptions const& web_content_options, St
             view().select_dropdown_closed({});
     });
 
-    view().on_request_select_dropdown = [this](Gfx::IntPoint content_position, i32 minimum_width, Vector<Web::HTML::SelectItem> items) {
+    view().on_request_select_dropdown = [this](Web::DevicePixelPoint position, Web::DevicePixels minimum_width, Vector<Web::HTML::SelectItem> items) {
         m_select_dropdown->clear();
-        m_select_dropdown->setMinimumWidth(minimum_width / view().device_pixel_ratio());
+        m_select_dropdown->setMinimumWidth(minimum_width.value() / view().device_pixel_ratio());
         for (auto const& item : items) {
             select_dropdown_add_item(m_select_dropdown, item);
         }
 
-        m_select_dropdown->exec(view().mapToGlobal(QPoint(content_position.x(), content_position.y()) / view().device_pixel_ratio()));
+        m_select_dropdown->exec(view().mapToGlobal(device_pixel_point_to_qpoint(position, view().device_pixel_ratio())));
     };
 
     QObject::connect(focus_location_editor_action, &QAction::triggered, this, &Tab::focus_location_editor);
@@ -271,28 +271,28 @@ Tab::Tab(BrowserWindow* window, WebContentOptions const& web_content_options, St
     };
 
     view().on_reposition_window = [this](auto const& position) {
-        m_window->move(QPoint(position.x().value(), position.y().value()) / view().device_pixel_ratio());
-        return Web::DevicePixelPoint { m_window->x(), m_window->y() } * view().device_pixel_ratio();
+        m_window->move(device_pixel_point_to_qpoint(position, view().device_pixel_ratio()));
+        return device_pixel_point_to_qpoint(m_window->pos(), view().device_pixel_ratio());
     };
 
     view().on_resize_window = [this](auto const& size) {
-        m_window->resize(QSize(size.width().value(), size.height().value()) / view().device_pixel_ratio());
-        return Web::DevicePixelSize { m_window->width(), m_window->height() } * view().device_pixel_ratio();
+        m_window->resize(device_pixel_size_to_qsize(size, view().device_pixel_ratio()));
+        return qsize_to_device_pixel_size(m_window->size(), view().device_pixel_ratio());
     };
 
     view().on_maximize_window = [this]() {
         m_window->showMaximized();
-        return Web::DevicePixelRect { m_window->x(), m_window->y(), m_window->width(), m_window->height() } * view().device_pixel_ratio();
+        return qrect_to_device_pixel_rect(m_window->rect(), view().device_pixel_ratio());
     };
 
     view().on_minimize_window = [this]() {
         m_window->showMinimized();
-        return Web::DevicePixelRect { m_window->x(), m_window->y(), m_window->width(), m_window->height() } * view().device_pixel_ratio();
+        return qrect_to_device_pixel_rect(m_window->rect(), view().device_pixel_ratio());
     };
 
     view().on_fullscreen_window = [this]() {
         m_window->showFullScreen();
-        return Web::DevicePixelRect { m_window->x(), m_window->y(), m_window->width(), m_window->height() } * view().device_pixel_ratio();
+        return qrect_to_device_pixel_rect(m_window->rect(), view().device_pixel_ratio());
     };
 
     view().on_insert_clipboard_entry = [](auto const& data, auto const&, auto const& mime_type) {
@@ -365,7 +365,7 @@ Tab::Tab(BrowserWindow* window, WebContentOptions const& web_content_options, St
     m_page_context_menu->addAction(&m_window->view_source_action());
     m_page_context_menu->addAction(&m_window->inspect_dom_node_action());
 
-    view().on_context_menu_request = [this, search_selected_text_action](Gfx::IntPoint content_position) {
+    view().on_context_menu_request = [this, search_selected_text_action](Web::DevicePixelPoint position) {
         auto selected_text = Settings::the()->enable_search()
             ? view().selected_text_with_whitespace_collapsed()
             : OptionalNone {};
@@ -379,7 +379,7 @@ Tab::Tab(BrowserWindow* window, WebContentOptions const& web_content_options, St
             search_selected_text_action->setVisible(false);
         }
 
-        m_page_context_menu->exec(view().mapToGlobal(QPoint(content_position.x(), content_position.y()) / view().device_pixel_ratio()));
+        m_page_context_menu->exec(view().mapToGlobal(device_pixel_point_to_qpoint(position, view().device_pixel_ratio())));
     };
 
     auto* open_link_action = new QAction("&Open", this);
@@ -408,7 +408,7 @@ Tab::Tab(BrowserWindow* window, WebContentOptions const& web_content_options, St
     m_link_context_menu->addSeparator();
     m_link_context_menu->addAction(&m_window->inspect_dom_node_action());
 
-    view().on_link_context_menu_request = [this](auto const& url, Gfx::IntPoint content_position) {
+    view().on_link_context_menu_request = [this](Web::DevicePixelPoint position, auto const& url) {
         m_link_context_menu_url = url;
 
         switch (WebView::url_type(url)) {
@@ -423,7 +423,7 @@ Tab::Tab(BrowserWindow* window, WebContentOptions const& web_content_options, St
             break;
         }
 
-        m_link_context_menu->exec(view().mapToGlobal(QPoint(content_position.x(), content_position.y()) / view().device_pixel_ratio()));
+        m_link_context_menu->exec(view().mapToGlobal(device_pixel_point_to_qpoint(position, view().device_pixel_ratio())));
     };
 
     auto* open_image_action = new QAction("&Open Image", this);
@@ -472,11 +472,11 @@ Tab::Tab(BrowserWindow* window, WebContentOptions const& web_content_options, St
     m_image_context_menu->addSeparator();
     m_image_context_menu->addAction(&m_window->inspect_dom_node_action());
 
-    view().on_image_context_menu_request = [this](auto& image_url, Gfx::IntPoint content_position, Gfx::ShareableBitmap const& shareable_bitmap) {
+    view().on_image_context_menu_request = [this](Web::DevicePixelPoint position, auto& image_url, Gfx::ShareableBitmap const& shareable_bitmap) {
         m_image_context_menu_url = image_url;
         m_image_context_menu_bitmap = shareable_bitmap;
 
-        m_image_context_menu->exec(view().mapToGlobal(QPoint(content_position.x(), content_position.y()) / view().device_pixel_ratio()));
+        m_image_context_menu->exec(view().mapToGlobal(device_pixel_point_to_qpoint(position, view().device_pixel_ratio())));
     };
 
     m_media_context_menu_play_icon = load_icon_from_uri("resource://icons/16x16/play.png"sv);
@@ -570,7 +570,7 @@ Tab::Tab(BrowserWindow* window, WebContentOptions const& web_content_options, St
     m_video_context_menu->addSeparator();
     m_video_context_menu->addAction(&m_window->inspect_dom_node_action());
 
-    view().on_media_context_menu_request = [this](Gfx::IntPoint content_position, Web::Page::MediaContextMenu const& menu) {
+    view().on_media_context_menu_request = [this](Web::DevicePixelPoint position, Web::Page::MediaContextMenu const& menu) {
         m_media_context_menu_url = menu.media_url;
 
         if (menu.is_playing) {
@@ -592,7 +592,7 @@ Tab::Tab(BrowserWindow* window, WebContentOptions const& web_content_options, St
         m_media_context_menu_controls_action->setChecked(menu.has_user_agent_controls);
         m_media_context_menu_loop_action->setChecked(menu.is_looping);
 
-        auto screen_position = view().mapToGlobal(QPoint(content_position.x(), content_position.y()) / view().device_pixel_ratio());
+        auto screen_position = view().mapToGlobal(device_pixel_point_to_qpoint(position, view().device_pixel_ratio()));
         if (menu.is_video)
             m_video_context_menu->exec(screen_position);
         else

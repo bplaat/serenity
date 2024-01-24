@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "StringUtils.h"
+#include "Conversions.h"
 #include <AK/Forward.h>
 #include <AK/String.h>
 #include <QCompleter>

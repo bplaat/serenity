@@ -30,8 +30,6 @@ public:
 private:
     explicit InspectorWidget(WebView::OutOfProcessWebView& content_view);
 
-    Gfx::IntPoint to_widget_position(Gfx::IntPoint) const;
-
     RefPtr<WebView::OutOfProcessWebView> m_inspector_view;
     OwnPtr<WebView::InspectorClient> m_inspector_client;
 

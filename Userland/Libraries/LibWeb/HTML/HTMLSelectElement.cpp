@@ -299,7 +299,8 @@ void HTMLSelectElement::activation_behavior(DOM::Event const&)
     // Request select dropdown
     auto weak_element = make_weak_ptr<HTMLSelectElement>();
     auto rect = get_bounding_client_rect();
-    auto position = document().browsing_context()->to_top_level_position(Web::CSSPixelPoint { rect->x(), rect->y() });
+    auto viewport_offset = document().browsing_context()->active_document()->navigable()->viewport_scroll_offset();
+    auto position = document().browsing_context()->to_top_level_position(Web::CSSPixelPoint { rect->x(), rect->y() }.translated(viewport_offset)).translated(-viewport_offset);
     document().browsing_context()->top_level_browsing_context()->page().did_request_select_dropdown(weak_element, position, CSSPixels(rect->width()), items);
     set_is_open(true);
 }

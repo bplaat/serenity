@@ -37,9 +37,9 @@ public:
     void context_menu_remove_dom_node_attribute();
     void context_menu_copy_dom_node_attribute_value();
 
-    Function<void(Gfx::IntPoint)> on_requested_dom_node_text_context_menu;
-    Function<void(Gfx::IntPoint, String const&)> on_requested_dom_node_tag_context_menu;
-    Function<void(Gfx::IntPoint, String const&, Attribute const&)> on_requested_dom_node_attribute_context_menu;
+    Function<void(Web::DevicePixelPoint)> on_requested_dom_node_text_context_menu;
+    Function<void(Web::DevicePixelPoint, String const&)> on_requested_dom_node_tag_context_menu;
+    Function<void(Web::DevicePixelPoint, String const&, Attribute const&)> on_requested_dom_node_attribute_context_menu;
 
 private:
     void load_inspector();

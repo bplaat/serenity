@@ -111,10 +111,10 @@ void WebContentClient::did_request_scroll_to(Web::DevicePixelPoint scroll_positi
         m_view.on_scroll_to_point(scroll_position);
 }
 
-void WebContentClient::did_enter_tooltip_area(Gfx::IntPoint content_position, ByteString const& title)
+void WebContentClient::did_enter_tooltip_area(Web::DevicePixelPoint position, ByteString const& title)
 {
     if (m_view.on_enter_tooltip_area)
-        m_view.on_enter_tooltip_area(m_view.to_widget_position(content_position), title);
+        m_view.on_enter_tooltip_area(position, title);
 }
 
 void WebContentClient::did_leave_tooltip_area()
@@ -151,28 +151,28 @@ void WebContentClient::did_middle_click_link(AK::URL const& url, ByteString cons
         m_view.on_link_middle_click(url, target, modifiers);
 }
 
-void WebContentClient::did_request_context_menu(Gfx::IntPoint content_position)
+void WebContentClient::did_request_context_menu(Web::DevicePixelPoint position)
 {
     if (m_view.on_context_menu_request)
-        m_view.on_context_menu_request(m_view.to_widget_position(content_position));
+        m_view.on_context_menu_request(position);
 }
 
-void WebContentClient::did_request_link_context_menu(Gfx::IntPoint content_position, AK::URL const& url, ByteString const&, unsigned)
+void WebContentClient::did_request_link_context_menu(Web::DevicePixelPoint position, AK::URL const& url, ByteString const&, unsigned)
 {
     if (m_view.on_link_context_menu_request)
-        m_view.on_link_context_menu_request(url, m_view.to_widget_position(content_position));
+        m_view.on_link_context_menu_request(position, url);
 }
 
-void WebContentClient::did_request_image_context_menu(Gfx::IntPoint content_position, AK::URL const& url, ByteString const&, unsigned, Gfx::ShareableBitmap const& bitmap)
+void WebContentClient::did_request_image_context_menu(Web::DevicePixelPoint position, AK::URL const& url, ByteString const&, unsigned, Gfx::ShareableBitmap const& bitmap)
 {
     if (m_view.on_image_context_menu_request)
-        m_view.on_image_context_menu_request(url, m_view.to_widget_position(content_position), bitmap);
+        m_view.on_image_context_menu_request(position, url, bitmap);
 }
 
-void WebContentClient::did_request_media_context_menu(Gfx::IntPoint content_position, ByteString const&, unsigned, Web::Page::MediaContextMenu const& menu)
+void WebContentClient::did_request_media_context_menu(Web::DevicePixelPoint position, ByteString const&, unsigned, Web::Page::MediaContextMenu const& menu)
 {
     if (m_view.on_media_context_menu_request)
-        m_view.on_media_context_menu_request(m_view.to_widget_position(content_position), menu);
+        m_view.on_media_context_menu_request(position, menu);
 }
 
 void WebContentClient::did_get_source(AK::URL const& url, ByteString const& source)
@@ -406,10 +406,10 @@ void WebContentClient::did_request_color_picker(Color const& current_color)
         m_view.on_request_color_picker(current_color);
 }
 
-void WebContentClient::did_request_select_dropdown(Gfx::IntPoint content_position, i32 minimum_width, Vector<Web::HTML::SelectItem> const& items)
+void WebContentClient::did_request_select_dropdown(Web::DevicePixelPoint position, Web::DevicePixels minimum_width, Vector<Web::HTML::SelectItem> const& items)
 {
     if (m_view.on_request_select_dropdown)
-        m_view.on_request_select_dropdown(content_position, minimum_width, items);
+        m_view.on_request_select_dropdown(position, minimum_width, items);
 }
 
 void WebContentClient::did_finish_handling_input_event(bool event_was_accepted)
@@ -466,10 +466,10 @@ void WebContentClient::inspector_did_replace_dom_node_attribute(i32 node_id, Str
         m_view.on_inspector_replaced_dom_node_attribute(node_id, name, replacement_attributes);
 }
 
-void WebContentClient::inspector_did_request_dom_tree_context_menu(i32 node_id, Gfx::IntPoint position, String const& type, Optional<String> const& tag, Optional<Attribute> const& attribute)
+void WebContentClient::inspector_did_request_dom_tree_context_menu(i32 node_id, Web::DevicePixelPoint position, String const& type, Optional<String> const& tag, Optional<Attribute> const& attribute)
 {
     if (m_view.on_inspector_requested_dom_tree_context_menu)
-        m_view.on_inspector_requested_dom_tree_context_menu(node_id, m_view.to_widget_position(position), type, tag, attribute);
+        m_view.on_inspector_requested_dom_tree_context_menu(node_id, position, type, tag, attribute);
 }
 
 void WebContentClient::inspector_did_execute_console_script(String const& script)

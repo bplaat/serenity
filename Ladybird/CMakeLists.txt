@@ -116,6 +116,7 @@ if (ENABLE_QT)
     target_sources(ladybird PRIVATE
         Qt/AutoComplete.cpp
         Qt/BrowserWindow.cpp
+        Qt/Conversions.cpp
         Qt/EventLoopImplementationQt.cpp
         Qt/EventLoopImplementationQtEventTarget.cpp
         Qt/Icon.cpp
@@ -125,7 +126,6 @@ if (ENABLE_QT)
         Qt/SettingsDialog.cpp
         Qt/Tab.cpp
         Qt/TVGIconEngine.cpp
-        Qt/StringUtils.cpp
         Qt/WebContentView.cpp
         Qt/ladybird.qrc
         Qt/main.cpp

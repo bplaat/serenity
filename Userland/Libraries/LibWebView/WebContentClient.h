@@ -40,17 +40,17 @@ private:
     virtual void did_change_title(ByteString const&) override;
     virtual void did_request_scroll(Web::DevicePixels, Web::DevicePixels) override;
     virtual void did_request_scroll_to(Web::DevicePixelPoint) override;
-    virtual void did_enter_tooltip_area(Gfx::IntPoint, ByteString const&) override;
+    virtual void did_enter_tooltip_area(Web::DevicePixelPoint, ByteString const&) override;
     virtual void did_leave_tooltip_area() override;
     virtual void did_hover_link(AK::URL const&) override;
     virtual void did_unhover_link() override;
     virtual void did_click_link(AK::URL const&, ByteString const&, unsigned) override;
     virtual void did_middle_click_link(AK::URL const&, ByteString const&, unsigned) override;
     virtual void did_start_loading(AK::URL const&, bool) override;
-    virtual void did_request_context_menu(Gfx::IntPoint) override;
-    virtual void did_request_link_context_menu(Gfx::IntPoint, AK::URL const&, ByteString const&, unsigned) override;
-    virtual void did_request_image_context_menu(Gfx::IntPoint, AK::URL const&, ByteString const&, unsigned, Gfx::ShareableBitmap const&) override;
-    virtual void did_request_media_context_menu(Gfx::IntPoint, ByteString const&, unsigned, Web::Page::MediaContextMenu const&) override;
+    virtual void did_request_context_menu(Web::DevicePixelPoint) override;
+    virtual void did_request_link_context_menu(Web::DevicePixelPoint, AK::URL const&, ByteString const&, unsigned) override;
+    virtual void did_request_image_context_menu(Web::DevicePixelPoint, AK::URL const&, ByteString const&, unsigned, Gfx::ShareableBitmap const&) override;
+    virtual void did_request_media_context_menu(Web::DevicePixelPoint, ByteString const&, unsigned, Web::Page::MediaContextMenu const&) override;
     virtual void did_get_source(AK::URL const&, ByteString const&) override;
     virtual void did_inspect_dom_tree(ByteString const&) override;
     virtual void did_inspect_dom_node(bool has_style, ByteString const& computed_style, ByteString const& resolved_style, ByteString const& custom_properties, ByteString const& node_box_sizing, ByteString const& aria_properties_state) override;
@@ -85,7 +85,7 @@ private:
     virtual Messages::WebContentClient::DidRequestFullscreenWindowResponse did_request_fullscreen_window() override;
     virtual void did_request_file(ByteString const& path, i32) override;
     virtual void did_request_color_picker(Color const& current_color) override;
-    virtual void did_request_select_dropdown(Gfx::IntPoint content_position, i32 minimum_width, Vector<Web::HTML::SelectItem> const& items) override;
+    virtual void did_request_select_dropdown(Web::DevicePixelPoint position, Web::DevicePixels minimum_width, Vector<Web::HTML::SelectItem> const& items) override;
     virtual void did_finish_handling_input_event(bool event_was_accepted) override;
     virtual void did_finish_text_test() override;
     virtual void did_change_theme_color(Gfx::Color color) override;
@@ -96,7 +96,7 @@ private:
     virtual void inspector_did_set_dom_node_tag(i32 node_id, String const& tag) override;
     virtual void inspector_did_add_dom_node_attributes(i32 node_id, Vector<Attribute> const& attributes) override;
     virtual void inspector_did_replace_dom_node_attribute(i32 node_id, String const& name, Vector<Attribute> const& replacement_attributes) override;
-    virtual void inspector_did_request_dom_tree_context_menu(i32 node_id, Gfx::IntPoint position, String const& type, Optional<String> const& tag, Optional<Attribute> const& attribute) override;
+    virtual void inspector_did_request_dom_tree_context_menu(i32 node_id, Web::DevicePixelPoint position, String const& type, Optional<String> const& tag, Optional<Attribute> const& attribute) override;
     virtual void inspector_did_execute_console_script(String const& script) override;
     virtual Messages::WebContentClient::RequestWorkerAgentResponse request_worker_agent() override;
 

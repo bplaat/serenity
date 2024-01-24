@@ -36,18 +36,22 @@ static KeyModifier ns_modifiers_to_key_modifiers(NSEventModifierFlags modifier_f
     return static_cast<KeyModifier>(modifiers);
 }
 
-MouseEvent ns_event_to_mouse_event(NSEvent* event, NSView* view, GUI::MouseButton button)
+MouseEvent ns_event_to_mouse_event(NSEvent* event, NSClipView* view, GUI::MouseButton button)
 {
     auto position = [view convertPoint:event.locationInWindow fromView:nil];
     auto screen_position = [NSEvent mouseLocation];
     auto modifiers = ns_modifiers_to_key_modifiers(event.modifierFlags, button);
 
-    return { ns_point_to_gfx_point(position), ns_point_to_gfx_point(screen_position), button, modifiers };
+    float device_pixel_ratio = [[view window] backingScaleFactor];
+    Web::DevicePixelPoint scroll_position = ns_point_to_gfx_point([view bounds].origin, device_pixel_ratio);
+    return { ns_point_to_gfx_point(position, device_pixel_ratio) - scroll_position, ns_point_to_gfx_point(screen_position, device_pixel_ratio), button, modifiers };
 }
 
-NSEvent* create_context_menu_mouse_event(NSView* view, Gfx::IntPoint position)
+NSEvent* create_context_menu_mouse_event(NSClipView* view, Web::DevicePixelPoint position)
 {
-    return create_context_menu_mouse_event(view, gfx_point_to_ns_point(position));
+    float device_pixel_ratio = [[view window] backingScaleFactor];
+    Web::DevicePixelPoint scroll_position = ns_point_to_gfx_point([view bounds].origin, device_pixel_ratio);
+    return create_context_menu_mouse_event(view, gfx_point_to_ns_point(position + scroll_position, device_pixel_ratio));
 }
 
 NSEvent* create_context_menu_mouse_event(NSView* view, NSPoint position)

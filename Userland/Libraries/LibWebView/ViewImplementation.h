@@ -115,10 +115,10 @@ public:
     Function<String(Web::HTML::ActivateTab)> on_new_tab;
     Function<void()> on_activate_tab;
     Function<void()> on_close;
-    Function<void(Gfx::IntPoint screen_position)> on_context_menu_request;
-    Function<void(const AK::URL&, Gfx::IntPoint screen_position)> on_link_context_menu_request;
-    Function<void(const AK::URL&, Gfx::IntPoint screen_position, Gfx::ShareableBitmap const&)> on_image_context_menu_request;
-    Function<void(Gfx::IntPoint screen_position, Web::Page::MediaContextMenu const&)> on_media_context_menu_request;
+    Function<void(Web::DevicePixelPoint)> on_context_menu_request;
+    Function<void(Web::DevicePixelPoint, const AK::URL&)> on_link_context_menu_request;
+    Function<void(Web::DevicePixelPoint, const AK::URL&, Gfx::ShareableBitmap const&)> on_image_context_menu_request;
+    Function<void(Web::DevicePixelPoint, Web::Page::MediaContextMenu const&)> on_media_context_menu_request;
     Function<void(const AK::URL&)> on_link_hover;
     Function<void()> on_link_unhover;
     Function<void(const AK::URL&, ByteString const& target, unsigned modifiers)> on_link_click;
@@ -134,7 +134,7 @@ public:
     Function<void(Web::DevicePixels, Web::DevicePixels)> on_scroll_by_delta;
     Function<void(Web::DevicePixelPoint)> on_scroll_to_point;
     Function<void(Gfx::StandardCursor)> on_cursor_change;
-    Function<void(Gfx::IntPoint, ByteString const&)> on_enter_tooltip_area;
+    Function<void(Web::DevicePixelPoint, ByteString const&)> on_enter_tooltip_area;
     Function<void()> on_leave_tooltip_area;
     Function<void(String const& message)> on_request_alert;
     Function<void(String const& message)> on_request_confirm;
@@ -164,7 +164,7 @@ public:
     Function<Web::DevicePixelRect()> on_minimize_window;
     Function<Web::DevicePixelRect()> on_fullscreen_window;
     Function<void(Color current_color)> on_request_color_picker;
-    Function<void(Gfx::IntPoint content_position, i32 minimum_width, Vector<Web::HTML::SelectItem> items)> on_request_select_dropdown;
+    Function<void(Web::DevicePixelPoint position, Web::DevicePixels minimum_width, Vector<Web::HTML::SelectItem> items)> on_request_select_dropdown;
     Function<void(bool)> on_finish_handling_input_event;
     Function<void()> on_text_test_finish;
     Function<void(Gfx::Color)> on_theme_color_change;
@@ -175,13 +175,11 @@ public:
     Function<void(i32, String const&)> on_inspector_set_dom_node_tag;
     Function<void(i32, Vector<Attribute> const&)> on_inspector_added_dom_node_attributes;
     Function<void(i32, String const&, Vector<Attribute> const&)> on_inspector_replaced_dom_node_attribute;
-    Function<void(i32, Gfx::IntPoint, String const&, Optional<String> const&, Optional<Attribute> const&)> on_inspector_requested_dom_tree_context_menu;
+    Function<void(i32, Web::DevicePixelPoint, String const&, Optional<String> const&, Optional<Attribute> const&)> on_inspector_requested_dom_tree_context_menu;
     Function<void(String const&)> on_inspector_executed_console_script;
     Function<SocketPair()> on_request_worker_agent;
 
     virtual Web::DevicePixelRect viewport_rect() const = 0;
-    virtual Gfx::IntPoint to_content_position(Gfx::IntPoint widget_position) const = 0;
-    virtual Gfx::IntPoint to_widget_position(Gfx::IntPoint content_position) const = 0;
 
 protected:
     static constexpr auto ZOOM_MIN_LEVEL = 0.3f;
