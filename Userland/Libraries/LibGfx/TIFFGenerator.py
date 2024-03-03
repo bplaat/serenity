@@ -156,6 +156,11 @@ known_tags: List[Tag] = [
     Tag('339', [TIFFType.UnsignedShort], [], SampleFormat.Unsigned, "SampleFormat", SampleFormat),
     Tag('34665', [TIFFType.UnsignedLong, TIFFType.IFD], [1], None, "ExifIFD"),
     Tag('34675', [TIFFType.Undefined], [], None, "ICCProfile"),
+    Tag('34853', [TIFFType.Undefined], [], None, "GPSInfo"),
+
+    Tag('0', [TIFFType.UnsignedLong], [], None, "GPSVersionID"),
+    Tag('2', [TIFFType.UnsignedRational], [3], None, "GPSLatitude"),
+    Tag('4', [TIFFType.UnsignedRational], [3], None, "GPSLongitude"),
 ]
 
 HANDLE_TAG_SIGNATURE_TEMPLATE = ("ErrorOr<void> {namespace}handle_tag(Function<ErrorOr<void>(u32)>&& subifd_handler, "

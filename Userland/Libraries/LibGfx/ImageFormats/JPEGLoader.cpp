@@ -2050,6 +2050,30 @@ ErrorOr<Optional<ReadonlyBytes>> JPEGImageDecoderPlugin::icc_data()
     return OptionalNone {};
 }
 
+Optional<Geolocation> JPEGImageDecoderPlugin::geolocation()
+{
+    if (m_context->exif_metadata) {
+        auto gps_tags = m_context->exif_metadata->gps_info();
+        if (gps_tags.has_value()) {
+
+            auto tags = TIFFImageDecoderPlugin::read_exif_metadata(*gps_tags);
+            if (!tags.is_error()) {
+                auto t = tags.release_value();
+
+                dbgln("{}", *t->gps_version_id());
+                dbgln("{}", t->gps_latitude()->at(0));
+                dbgln("{}", t->gps_longitude()->at(0));
+                return OptionalNone {};
+            }
+
+            dbgln("Can't parse tiff");
+        }
+
+        dbgln("No gps info");
+    }
+    return OptionalNone {};
+}
+
 NaturalFrameFormat JPEGImageDecoderPlugin::natural_frame_format() const
 {
     if (m_context->state == JPEGLoadingContext::State::Error)

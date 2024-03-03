@@ -451,7 +451,6 @@ ErrorOr<void> PropertiesWindow::create_image_tab(GUI::TabWidget& tab_widget, Non
             tab.find_descendant_of_type_named<GUI::Label>("image_icc_color_space")->set_text(TRY(String::from_utf8(data_color_space_name(icc_profile->data_color_space()))));
             tab.find_descendant_of_type_named<GUI::Label>("image_icc_device_class")->set_text(TRY(String::from_utf8((device_class_name(icc_profile->device_class())))));
         }
-
     } else {
         hide_icc_group("None"_string);
     }
@@ -473,6 +472,12 @@ ErrorOr<void> PropertiesWindow::create_image_tab(GUI::TabWidget& tab_widget, Non
             auto& value_label = widget.add<GUI::Label>(field.value);
             value_label.set_text_alignment(Gfx::TextAlignment::TopLeft);
         }
+    }
+
+    auto const& geolocation = image_decoder->geolocation();
+    if (geolocation.has_value()) {
+        outln("{} {}", geolocation->latitude(), geolocation->longitude());
+        // FIXME: Show map with location
     }
 
     return {};

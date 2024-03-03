@@ -12,6 +12,7 @@
 #include <AK/RefCounted.h>
 #include <AK/RefPtr.h>
 #include <AK/String.h>
+#include <LibCore/DateTime.h>
 #include <LibGfx/Bitmap.h>
 #include <LibGfx/CMYKBitmap.h>
 #include <LibGfx/Size.h>
@@ -53,6 +54,23 @@ protected:
     mutable HashMap<StringView, String> m_main_tags;
 };
 
+class Geolocation {
+public:
+    Geolocation() = default;
+    virtual ~Geolocation() = default;
+
+    double latitude() const { return m_latitude; }
+    double longitude() const { return m_longitude; }
+    double altitude() const { return m_altitude; }
+    Core::DateTime const& timestamp() const { return m_timestamp; }
+
+protected:
+    double m_latitude;
+    double m_longitude;
+    double m_altitude;
+    Core::DateTime m_timestamp;
+};
+
 enum class NaturalFrameFormat {
     RGB,
     Grayscale,
@@ -85,8 +103,8 @@ public:
     virtual ErrorOr<ImageFrameDescriptor> frame(size_t index, Optional<IntSize> ideal_size = {}) = 0;
 
     virtual Optional<Metadata const&> metadata() { return OptionalNone {}; }
-
     virtual ErrorOr<Optional<ReadonlyBytes>> icc_data() { return OptionalNone {}; }
+    virtual Optional<Geolocation> geolocation() { return OptionalNone {}; }
 
     virtual NaturalFrameFormat natural_frame_format() const { return NaturalFrameFormat::RGB; }
     virtual ErrorOr<NonnullRefPtr<CMYKBitmap>> cmyk_frame() { VERIFY_NOT_REACHED(); }
@@ -113,6 +131,7 @@ public:
 
     Optional<Metadata const&> metadata() const { return m_plugin->metadata(); }
     ErrorOr<Optional<ReadonlyBytes>> icc_data() const { return m_plugin->icc_data(); }
+    Optional<Geolocation> geolocation() const { return m_plugin->geolocation(); }
 
     NaturalFrameFormat natural_frame_format() { return m_plugin->natural_frame_format(); }
 
