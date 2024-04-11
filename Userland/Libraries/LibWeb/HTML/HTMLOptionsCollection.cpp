@@ -12,6 +12,7 @@
 #include <LibWeb/HTML/HTMLSelectElement.h>
 #include <LibWeb/Namespace.h>
 #include <LibWeb/WebIDL/DOMException.h>
+#include <LibWeb/WebIDL/ExceptionOr.h>
 
 namespace Web::HTML {
 
@@ -67,6 +68,46 @@ WebIDL::ExceptionOr<void> HTMLOptionsCollection::set_length(WebIDL::UnsignedLong
             this->item(i)->remove();
     }
 
+    return {};
+}
+// https://html.spec.whatwg.org/#dom-htmloptionscollection-setter
+WebIDL::ExceptionOr<void> HTMLOptionsCollection::set_value_of_new_indexed_property(u32 index, JS::Value value)
+{
+    return set_value_of_existing_indexed_property(index, value);
+}
+
+WebIDL::ExceptionOr<void> HTMLOptionsCollection::set_value_of_existing_indexed_property(u32 index, JS::Value value)
+{
+    // 1. If value is null, invoke the steps for the remove method with index as the argument, and return.
+    if (value.is_null()) {
+        remove(index);
+        return {};
+    }
+
+    // 2. Let length be the number of nodes represented by the collection.
+    auto length = static_cast<WebIDL::UnsignedLong>(this->length());
+
+    // 3. Let n be index minus length.
+    auto n = index - length;
+
+    // 4. If n is greater than zero, then append a DocumentFragment consisting of n-1 new option elements with
+    //    no attributes and no child nodes to the select element on which the HTMLOptionsCollection is rooted.
+    if (n > 0) {
+        auto root_element = root();
+        for (WebIDL::UnsignedLong i = 0; i < n; i++)
+            TRY(root_element->append_child(TRY(DOM::create_element(root_element->document(), HTML::TagNames::option, Namespace::HTML))));
+    }
+
+    // 5. If n is greater than or equal to zero, append value to the select element.
+    //    Otherwise, replace the indexth element in the collection by value.
+    if (n >= 0) {
+        if (value.is_object() && !is<HTMLOptionElement>(value.as_object()))
+            return WebIDL::SimpleException { WebIDL::SimpleExceptionType::TypeError, "The provided value is not an HTMLOptionElement."sv };
+        TRY(root()->append_child(static_cast<HTMLOptionElement&>(value.as_object())));
+    } else {
+        auto* element = this->item(index);
+        TRY(element->parent()->replace_child(*element, static_cast<HTMLOptionElement&>(value.as_object())));
+    }
     return {};
 }
 

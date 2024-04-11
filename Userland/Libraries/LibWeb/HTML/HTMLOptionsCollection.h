@@ -26,6 +26,9 @@ public:
 
     WebIDL::ExceptionOr<void> set_length(WebIDL::UnsignedLong);
 
+    virtual WebIDL::ExceptionOr<void> set_value_of_new_indexed_property(u32, JS::Value) override;
+    virtual WebIDL::ExceptionOr<void> set_value_of_existing_indexed_property(u32, JS::Value) override;
+
     WebIDL::ExceptionOr<void> add(HTMLOptionOrOptGroupElement element, Optional<HTMLElementOrElementIndex> before = {});
 
     void remove(WebIDL::Long);

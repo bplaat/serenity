@@ -3,7 +3,12 @@
     test(() => {
         let testCounter = 1;
         function testPart(part) {
-            println(`${testCounter++}. ${JSON.stringify(part())}`);
+            try {
+                println(`${testCounter}. ${JSON.stringify(part())}`);
+            } catch (e) {
+                println(`${testCounter}. Exception: ${e.name}`);
+            }
+            testCounter++;
         }
 
         // 1. Get select value of unedited
@@ -180,6 +185,54 @@
             }
             select.options[2].selected = true;
             return select.selectedOptions[0].textContent;
+        });
+
+        // 18. Select element property getter
+        testPart(() => {
+            const select = document.createElement('select');
+            for (let i = 0; i < 10; i++) {
+                const option = document.createElement('option');
+                option.textContent = i;
+                select.appendChild(option);
+            }
+            return select[0].textContent;
+        });
+
+        // 19. Select element property getter invalid
+        testPart(() => {
+            const select = document.createElement('select');
+            for (let i = 0; i < 10; i++) {
+                const option = document.createElement('option');
+                option.textContent = i;
+                select.appendChild(option);
+            }
+            return select[20].textContent;
+        });
+
+        // 20. Select element property setter
+        testPart(() => {
+            const select = document.createElement('select');
+            const option = document.createElement('option');
+            option.textContent = 'FAIL';
+            select.appendChild(option);
+
+            const passOption = document.createElement('option');
+            passOption.textContent = 'PASS';
+            select[0] = passOption;
+            return select[0].textContent;
+        });
+
+        // 21. Select element property setter invalid
+        testPart(() => {
+            const select = document.createElement('select');
+            select[0].textContent = 'FAIL';
+        });
+
+        // 22. Select element property setter invalid
+        testPart(() => {
+            const select = document.createElement('select');
+            select.appendChild(document.createElement('option'));
+            select[1] = document.createElement('div');
         });
     });
 </script>

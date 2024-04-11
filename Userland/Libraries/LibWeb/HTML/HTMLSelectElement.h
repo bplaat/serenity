@@ -36,11 +36,15 @@ public:
 
     WebIDL::UnsignedLong length();
     WebIDL::ExceptionOr<void> set_length(WebIDL::UnsignedLong);
+
     HTMLOptionElement* item(WebIDL::UnsignedLong index);
     HTMLOptionElement* named_item(FlyString const& name);
     WebIDL::ExceptionOr<void> add(HTMLOptionOrOptGroupElement element, Optional<HTMLElementOrElementIndex> before = {});
     void remove();
     void remove(WebIDL::Long);
+
+    virtual WebIDL::ExceptionOr<void> set_value_of_new_indexed_property(u32, JS::Value) override;
+    virtual WebIDL::ExceptionOr<void> set_value_of_existing_indexed_property(u32, JS::Value) override;
 
     JS::NonnullGCPtr<DOM::HTMLCollection> selected_options();
 

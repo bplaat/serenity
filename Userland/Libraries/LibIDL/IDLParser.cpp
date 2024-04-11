@@ -527,16 +527,16 @@ void Parser::parse_setter(HashMap<ByteString, ByteString>& extended_attributes, 
         if (interface.named_property_setter.has_value())
             report_parsing_error("An interface can only have one named property setter."sv, filename, input, lexer.tell());
 
-        if (!interface.named_property_getter.has_value())
-            report_parsing_error("A named property setter must be accompanied by a named property getter."sv, filename, input, lexer.tell());
+        // if (!interface.named_property_getter.has_value())
+        //     report_parsing_error("A named property setter must be accompanied by a named property getter."sv, filename, input, lexer.tell());
 
         interface.named_property_setter = move(function);
     } else if (identifier.type->name() == "unsigned long") {
         if (interface.indexed_property_setter.has_value())
             report_parsing_error("An interface can only have one indexed property setter."sv, filename, input, lexer.tell());
 
-        if (!interface.indexed_property_getter.has_value())
-            report_parsing_error("An indexed property setter must be accompanied by an indexed property getter."sv, filename, input, lexer.tell());
+        // if (!interface.indexed_property_getter.has_value())
+        //     report_parsing_error("An indexed property setter must be accompanied by an indexed property getter."sv, filename, input, lexer.tell());
 
         interface.indexed_property_setter = move(function);
     } else {

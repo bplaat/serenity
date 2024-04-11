@@ -147,6 +147,17 @@ void HTMLSelectElement::remove(WebIDL::Long index)
     const_cast<HTMLOptionsCollection&>(*options()).remove(index);
 }
 
+// https://html.spec.whatwg.org/multipage/form-elements.html#dom-select-setter
+WebIDL::ExceptionOr<void> HTMLSelectElement::set_value_of_new_indexed_property(u32 index, JS::Value value)
+{
+    return options()->set_value_of_new_indexed_property(index, value);
+}
+
+WebIDL::ExceptionOr<void> HTMLSelectElement::set_value_of_existing_indexed_property(u32 index, JS::Value value)
+{
+    return options()->set_value_of_existing_indexed_property(index, value);
+}
+
 // https://html.spec.whatwg.org/multipage/form-elements.html#dom-select-selectedoptions
 JS::NonnullGCPtr<DOM::HTMLCollection> HTMLSelectElement::selected_options()
 {

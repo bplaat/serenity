@@ -15,3 +15,7 @@
 15. 8
 16. 10
 17. "2"
+18. "0"
+19. "PASS"
+20. Exception: TypeError
+21. Exception: TypeError
