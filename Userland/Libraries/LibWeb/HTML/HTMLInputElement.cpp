@@ -73,6 +73,7 @@ void HTMLInputElement::visit_edges(Cell::Visitor& visitor)
     visitor.visit(m_placeholder_element);
     visitor.visit(m_placeholder_text_node);
     visitor.visit(m_color_well_element);
+    visitor.visit(m_search_cancel_button);
     visitor.visit(m_file_button);
     visitor.visit(m_file_label);
     visitor.visit(m_legacy_pre_activation_behavior_checked_element_in_group);
@@ -601,6 +602,8 @@ void HTMLInputElement::commit_pending_changes()
 
 void HTMLInputElement::update_placeholder_visibility()
 {
+    update_search_cancel_button();
+
     if (!m_placeholder_element)
         return;
     if (this->placeholder_value().has_value()) {
@@ -750,6 +753,9 @@ void HTMLInputElement::update_shadow_tree()
     case TypeAttributeState::FileUpload:
         update_file_input_shadow_tree();
         break;
+    case TypeAttributeState::Search:
+        update_search_cancel_button();
+        break;
     case TypeAttributeState::Range:
         update_slider_thumb_element();
         break;
@@ -811,14 +817,28 @@ void HTMLInputElement::create_text_input_shadow_tree()
 
     update_placeholder_visibility();
 
+    if (type_state() == TypeAttributeState::Search) {
+        // Cancel button
+        m_search_cancel_button = MUST(DOM::create_element(document(), HTML::TagNames::button, Namespace::HTML));
+        m_search_cancel_button->set_use_pseudo_element(CSS::Selector::PseudoElement::Type::SearchCancelButton);
+        update_search_cancel_button();
+        MUST(m_search_cancel_button->set_inner_html("<svg style=\"width: 1em; height: 1em;\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z\" /></svg>"sv));
+        MUST(element->append_child(*m_search_cancel_button));
+
+        auto up_callback_function = JS::NativeFunction::create(
+            realm(), [this](JS::VM&) {
+                MUST(set_value(""_string));
+                return JS::js_undefined();
+            },
+            0, "", &realm());
+        auto up_callback = realm().heap().allocate_without_realm<WebIDL::CallbackType>(*up_callback_function, Bindings::host_defined_environment_settings_object(realm()));
+        m_search_cancel_button->add_event_listener_without_options(UIEvents::EventNames::click, DOM::IDLEventListener::create(realm(), up_callback));
+    }
+
     if (type_state() == TypeAttributeState::Number) {
         // Up button
         auto up_button = MUST(DOM::create_element(document(), HTML::TagNames::button, Namespace::HTML));
-        // FIXME: This cursor property doesn't work
-        MUST(up_button->set_attribute(HTML::AttributeNames::style, R"~~~(
-            padding: 0;
-            cursor: default;
-        )~~~"_string));
+        up_button->set_use_pseudo_element(CSS::Selector::PseudoElement::Type::InnerSpinButton);
         MUST(up_button->set_inner_html("<svg style=\"width: 1em; height: 1em;\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z\" /></svg>"sv));
         MUST(element->append_child(up_button));
 
@@ -833,10 +853,7 @@ void HTMLInputElement::create_text_input_shadow_tree()
 
         // Down button
         auto down_button = MUST(DOM::create_element(document(), HTML::TagNames::button, Namespace::HTML));
-        MUST(down_button->set_attribute(HTML::AttributeNames::style, R"~~~(
-            padding: 0;
-            cursor: default;
-        )~~~"_string));
+        down_button->set_use_pseudo_element(CSS::Selector::PseudoElement::Type::InnerSpinButton);
         MUST(down_button->set_inner_html("<svg style=\"width: 1em; height: 1em;\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z\" /></svg>"sv));
         MUST(element->append_child(down_button));
 
@@ -886,6 +903,14 @@ void HTMLInputElement::update_color_well_element()
         return;
 
     MUST(m_color_well_element->style_for_bindings()->set_property(CSS::PropertyID::BackgroundColor, m_value));
+}
+
+void HTMLInputElement::update_search_cancel_button()
+{
+    if (!m_search_cancel_button)
+        return;
+
+    MUST(m_search_cancel_button->style_for_bindings()->set_property(CSS::PropertyID::Display, value().is_empty() ? "none"sv : "block"sv));
 }
 
 void HTMLInputElement::create_file_input_shadow_tree()

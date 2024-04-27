@@ -275,6 +275,9 @@ private:
     void update_color_well_element();
     JS::GCPtr<DOM::Element> m_color_well_element;
 
+    void update_search_cancel_button();
+    JS::GCPtr<DOM::Element> m_search_cancel_button;
+
     void update_file_input_shadow_tree();
     JS::GCPtr<DOM::Element> m_file_button;
     JS::GCPtr<DOM::Element> m_file_label;

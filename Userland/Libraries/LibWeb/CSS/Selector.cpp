@@ -421,6 +421,8 @@ StringView Selector::PseudoElement::name(Selector::PseudoElement::Type pseudo_el
         return "first-letter"sv;
     case Selector::PseudoElement::Type::Marker:
         return "marker"sv;
+    case Selector::PseudoElement::Type::InnerSpinButton:
+        return "-webkit-inner-spin-button"sv;
     case Selector::PseudoElement::Type::MeterBar:
         return "-webkit-meter-bar"sv;
     case Selector::PseudoElement::Type::MeterEvenLessGoodValue:
@@ -437,6 +439,8 @@ StringView Selector::PseudoElement::name(Selector::PseudoElement::Type pseudo_el
         return "placeholder"sv;
     case Selector::PseudoElement::Type::Selection:
         return "selection"sv;
+    case Selector::PseudoElement::Type::SearchCancelButton:
+        return "-webkit-search-cancel-button"sv;
     case Selector::PseudoElement::Type::SliderRunnableTrack:
         return "-webkit-slider-runnable-track"sv;
     case Selector::PseudoElement::Type::SliderThumb:
@@ -463,6 +467,8 @@ Optional<Selector::PseudoElement> Selector::PseudoElement::from_string(FlyString
         return Selector::PseudoElement { Selector::PseudoElement::Type::FirstLine };
     } else if (name.equals_ignoring_ascii_case("marker"sv)) {
         return Selector::PseudoElement { Selector::PseudoElement::Type::Marker };
+    } else if (name.equals_ignoring_ascii_case("-webkit-inner-spin-button"sv)) {
+        return Selector::PseudoElement { Selector::PseudoElement::Type::InnerSpinButton };
     } else if (name.equals_ignoring_ascii_case("-webkit-meter-bar"sv)) {
         return Selector::PseudoElement { Selector::PseudoElement::Type::MeterBar };
     } else if (name.equals_ignoring_ascii_case("-webkit-meter-even-less-good-value"sv)) {
@@ -479,6 +485,8 @@ Optional<Selector::PseudoElement> Selector::PseudoElement::from_string(FlyString
         return Selector::PseudoElement { Selector::PseudoElement::Type::Placeholder };
     } else if (name.equals_ignoring_ascii_case("selection"sv)) {
         return Selector::PseudoElement { Selector::PseudoElement::Type::Selection };
+    } else if (name.equals_ignoring_ascii_case("-webkit-search-cancel-button"sv)) {
+        return Selector::PseudoElement { Selector::PseudoElement::Type::SearchCancelButton };
     } else if (name.equals_ignoring_ascii_case("backdrop"sv)) {
         return Selector::PseudoElement { Selector::PseudoElement::Type::Backdrop };
     } else if (name.equals_ignoring_ascii_case("-webkit-slider-runnable-track"sv)) {

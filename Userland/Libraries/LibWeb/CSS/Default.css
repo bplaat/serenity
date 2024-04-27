@@ -68,6 +68,17 @@ option {
     display: none;
 }
 
+/* Custom <input type="search"> and <input type="number"> styles */
+input[type=search]::-webkit-search-cancel-button,
+input[type=number]::-webkit-inner-spin-button {
+    display: block;
+    width: 1em;
+    height: 1em;
+    margin: 1px;
+    background-color: #ddd;
+    cursor: default;
+}
+
 /* Custom <input type="range"> styles */
 input[type=range] {
     display: inline-block;
