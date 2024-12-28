@@ -1,0 +1,8 @@
+[App]
+Name=ELF Explorer
+Executable=/bin/ELFExplorer
+Category=D&evelopment
+Description=Dig in to them ELFs
+
+[Launcher]
+FileTypes=,so,so.serenity
