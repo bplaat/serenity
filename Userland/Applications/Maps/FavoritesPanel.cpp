@@ -84,7 +84,6 @@ ErrorOr<void> FavoritesPanel::edit_favorite(GUI::ModelIndex const& index)
 
     auto edit_dialog = TRY(GUI::Dialog::try_create(window()));
     edit_dialog->set_title("Edit Favorite");
-    edit_dialog->resize(260, 61);
     edit_dialog->set_resizable(false);
 
     auto widget = TRY(Maps::FavoritesEditDialog::try_create());
