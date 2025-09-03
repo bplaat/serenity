@@ -8,6 +8,9 @@
 #include <AK/Coroutine.h>
 #include <LibCore/Socket.h>
 #include <LibCore/System.h>
+#if defined(AK_OS_MACOS) || defined(AK_OS_IOS)
+#    include <sys/ucred.h>
+#endif
 
 namespace Core {
 
@@ -222,7 +225,7 @@ Coroutine<ErrorOr<NonnullOwnPtr<TCPSocket>>> TCPSocket::async_connect(Core::Sock
     co_return CO_TRY(connect(address));
 }
 
-Coroutine<ErrorOr<NonnullOwnPtr<TCPSocket>>> TCPSocket::async_connect(const AK::ByteString& host, u16 port)
+Coroutine<ErrorOr<NonnullOwnPtr<TCPSocket>>> TCPSocket::async_connect(AK::ByteString const& host, u16 port)
 {
     co_return CO_TRY(connect(host, port));
 }
@@ -483,6 +486,42 @@ ErrorOr<pid_t> LocalSocket::peer_pid() const
 #elif !defined(AK_OS_GNU_HURD)
     TRY(System::getsockopt(m_helper.fd(), SOL_SOCKET, SO_PEERCRED, &creds, &creds_size));
     return creds.pid;
+#endif
+}
+
+ErrorOr<uid_t> LocalSocket::peer_uid() const
+{
+#if defined(AK_OS_MACOS) || defined(AK_OS_IOS) || defined(AK_OS_FREEBSD)
+    struct xucred creds = {};
+    socklen_t creds_size = sizeof(creds);
+#elif defined(AK_OS_OPENBSD)
+    struct sockpeercred creds = {};
+    socklen_t creds_size = sizeof(creds);
+#elif defined(AK_OS_NETBSD)
+    struct sockcred creds = {};
+    socklen_t creds_size = sizeof(creds);
+#elif defined(AK_OS_SOLARIS)
+    ucred_t* creds = NULL;
+    socklen_t creds_size = sizeof(creds);
+#elif defined(AK_OS_GNU_HURD)
+    return Error::from_errno(ENOTSUP);
+#else
+    struct ucred creds = {};
+    socklen_t creds_size = sizeof(creds);
+#endif
+
+#if defined(AK_OS_MACOS) || defined(AK_OS_IOS) || defined(AK_OS_FREEBSD)
+    TRY(System::getsockopt(m_helper.fd(), SOL_LOCAL, LOCAL_PEERCRED, &creds, &creds_size));
+    return creds.cr_uid;
+#elif defined(AK_OS_NETBSD)
+    TRY(System::getsockopt(m_helper.fd(), SOL_SOCKET, SCM_CREDS, &creds, &creds_size));
+    return creds.sc_uid;
+#elif defined(AK_OS_SOLARIS)
+    TRY(System::getsockopt(m_helper.fd(), SOL_SOCKET, SO_RECVUCRED, &creds, &creds_size));
+    return ucred_getuid(creds);
+#elif !defined(AK_OS_GNU_HURD)
+    TRY(System::getsockopt(m_helper.fd(), SOL_SOCKET, SO_PEERCRED, &creds, &creds_size));
+    return creds.uid;
 #endif
 }
 

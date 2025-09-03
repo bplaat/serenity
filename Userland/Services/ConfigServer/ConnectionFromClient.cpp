@@ -6,20 +6,24 @@
 
 #include "ConnectionFromClient.h"
 #include <ConfigServer/ConfigClientEndpoint.h>
+#include <LibCore/Account.h>
 #include <LibCore/ConfigFile.h>
+#include <LibCore/Environment.h>
 #include <LibCore/FileWatcher.h>
+#include <LibCore/ProcessStatisticsReader.h>
+#include <LibCore/SessionManagement.h>
+#include <LibCore/Socket.h>
 #include <LibCore/Timer.h>
 
 namespace ConfigServer {
 
-static HashMap<int, RefPtr<ConnectionFromClient>> s_connections;
-
 struct CachedDomain {
     ByteString domain;
-    NonnullRefPtr<Core::ConfigFile> config;
+    Vector<NonnullRefPtr<Core::ConfigFile>> configs;
     RefPtr<Core::FileWatcher> watcher;
 };
 
+static HashMap<int, RefPtr<ConnectionFromClient>> s_connections;
 static HashMap<ByteString, NonnullOwnPtr<CachedDomain>> s_cache;
 static constexpr int s_disk_sync_delay_ms = 5'000;
 
@@ -31,47 +35,87 @@ static void for_each_monitoring_connection(ByteString const& domain, ConnectionF
     }
 }
 
-static Core::ConfigFile& ensure_domain_config(ByteString const& domain)
+static Vector<Core::ConfigFile&> ensure_domain(Core::LocalSocket& socket, ByteString const& domain)
 {
+    // Try to get loaded domain from cache
     auto it = s_cache.find(domain);
-    if (it != s_cache.end())
-        return *it->value->config;
+    if (it != s_cache.end()) {
+        Vector<Core::ConfigFile&> config_refs;
+        for (auto& config_ptr : it->value->configs)
+            config_refs.append(*config_ptr);
+        return config_refs;
+    }
 
-    auto config = Core::ConfigFile::open_for_app(domain, Core::ConfigFile::AllowWriting::Yes).release_value_but_fixme_should_propagate_errors();
-    // FIXME: Use a single FileWatcher with multiple watches inside.
+    // Get login user
+    auto login_pid = MUST(Core::SessionManagement::root_session_id());
+    auto stats = MUST(Core::ProcessStatisticsReader::get_all(true));
+    auto login_session_stat = stats.processes.first_matching([&](auto& stat) { return stat.pid == login_pid; });
+    auto login_user = MUST(Core::Account::from_uid(login_session_stat.value().uid));
+
+    // Set current process HOME env for StandardPaths::config_directory()
+    MUST(Core::Environment::set("HOME"sv, login_user.home_directory(), Core::Environment::Overwrite::Yes));
+
+    dbgln("Loading domain {} {} {} ", login_user.uid(), MUST(socket.peer_uid()), domain);
+
+    // Load configs
+    Vector<NonnullRefPtr<Core::ConfigFile>> configs;
+    if (MUST(socket.peer_uid()) == 0) {
+        if (!login_user.is_root())
+            configs.append(Core::ConfigFile::open_for_app(domain, Core::ConfigFile::AllowWriting::Yes).release_value_but_fixme_should_propagate_errors());
+        configs.append(Core::ConfigFile::open_for_system(domain, Core::ConfigFile::AllowWriting::Yes).release_value_but_fixme_should_propagate_errors());
+    } else {
+        configs.append(Core::ConfigFile::open_for_app(domain, Core::ConfigFile::AllowWriting::Yes).release_value_but_fixme_should_propagate_errors());
+    }
+
+    // Create file watcher
+    // FIXME: Use a single FileWatcher with multiple watches inside
     auto watcher_or_error = Core::FileWatcher::create(Core::FileWatcherFlags::Nonblock);
     VERIFY(!watcher_or_error.is_error());
-    auto result = watcher_or_error.value()->add_watch(config->filename(), Core::FileWatcherEvent::Type::ContentModified);
-    VERIFY(!result.is_error());
-    watcher_or_error.value()->on_change = [config, domain](auto&) {
-        auto new_config = Core::ConfigFile::open(config->filename(), Core::ConfigFile::AllowWriting::Yes).release_value_but_fixme_should_propagate_errors();
-        for (auto& group : config->groups()) {
-            for (auto& key : config->keys(group)) {
-                if (!new_config->has_key(group, key)) {
-                    for_each_monitoring_connection(domain, nullptr, [&domain, &group, &key](ConnectionFromClient& connection) {
-                        connection.async_notify_removed_key(domain, group, key);
-                    });
+    for (auto& config : configs) {
+        if (!config->filename().is_empty()) {
+            auto result = watcher_or_error.value()->add_watch(config->filename(), Core::FileWatcherEvent::Type::ContentModified);
+            VERIFY(!result.is_error());
+        }
+    }
+    watcher_or_error.value()->on_change = [domain, configs](auto&) {
+        Vector<NonnullRefPtr<Core::ConfigFile>> new_configs;
+        for (auto const& config : configs) {
+            auto new_config = Core::ConfigFile::open(config->filename(), Core::ConfigFile::AllowWriting::Yes).release_value_but_fixme_should_propagate_errors();
+            for (auto& group : config->groups()) {
+                for (auto& key : config->keys(group)) {
+                    if (!new_config->has_key(group, key)) {
+                        for_each_monitoring_connection(domain, nullptr, [&domain, &group, &key](ConnectionFromClient& connection) {
+                            connection.async_notify_removed_key(domain, group, key);
+                        });
+                    }
                 }
             }
-        }
-        // FIXME: Detect type of keys.
-        for (auto& group : new_config->groups()) {
-            for (auto& key : new_config->keys(group)) {
-                auto old_value = config->read_entry(group, key);
-                auto new_value = new_config->read_entry(group, key);
-                if (old_value != new_value) {
-                    for_each_monitoring_connection(domain, nullptr, [&domain, &group, &key, &new_value](ConnectionFromClient& connection) {
-                        connection.async_notify_changed_string_value(domain, group, key, new_value);
-                    });
+            // FIXME: Detect type of keys.
+            for (auto& group : new_config->groups()) {
+                for (auto& key : new_config->keys(group)) {
+                    auto old_value = config->read_entry(group, key);
+                    auto new_value = new_config->read_entry(group, key);
+                    if (old_value != new_value) {
+                        for_each_monitoring_connection(domain, nullptr, [&domain, &group, &key, &new_value](ConnectionFromClient& connection) {
+                            connection.async_notify_changed_string_value(domain, group, key, new_value);
+                        });
+                    }
                 }
             }
+            new_configs.append(new_config);
         }
+
         // FIXME: Refactor this whole thing so that we don't need a cache lookup here.
-        s_cache.get(domain).value()->config = new_config;
+        s_cache.get(domain).value()->configs = new_configs;
     };
-    auto cache_entry = make<CachedDomain>(domain, config, watcher_or_error.release_value());
+
+    auto cache_entry = make<CachedDomain>(domain, move(configs), watcher_or_error.release_value());
     s_cache.set(domain, move(cache_entry));
-    return *config;
+
+    Vector<Core::ConfigFile&> config_refs;
+    for (auto& config_ptr : cache_entry->configs)
+        config_refs.append(*config_ptr);
+    return config_refs;
 }
 
 ConnectionFromClient::ConnectionFromClient(NonnullOwnPtr<Core::LocalSocket> client_socket, int client_id)
@@ -137,11 +181,13 @@ void ConnectionFromClient::sync_dirty_domains_to_disk()
     auto dirty_domains = move(m_dirty_domains);
     dbgln("Syncing {} dirty domains to disk", dirty_domains.size());
     for (auto domain : dirty_domains) {
-        auto& config = ensure_domain_config(domain);
-        if (auto result = config.sync(); result.is_error()) {
-            dbgln("Failed to write config '{}' to disk: {}", domain, result.error());
-            // Put it back in the list since it's still dirty.
-            m_dirty_domains.set(domain);
+        auto configs = ensure_domain(socket(), domain);
+        for (auto& config : configs) {
+            if (auto result = config.sync(); result.is_error()) {
+                dbgln("Failed to write config '{}' to disk: {}", domain, result.error());
+                // Put it back in the list since it's still dirty.
+                m_dirty_domains.set(domain);
+            }
         }
     }
 }
@@ -150,16 +196,26 @@ Messages::ConfigServer::ListConfigKeysResponse ConnectionFromClient::list_config
 {
     if (!validate_access(domain, group, ""))
         return Vector<ByteString> {};
-    auto& config = ensure_domain_config(domain);
-    return { config.keys(group) };
+
+    auto configs = ensure_domain(socket(), domain);
+    Vector<ByteString> keys {};
+    for (auto& config : configs) {
+        keys.extend(config.keys(group));
+    }
+    return keys;
 }
 
 Messages::ConfigServer::ListConfigGroupsResponse ConnectionFromClient::list_config_groups(ByteString const& domain)
 {
     if (!validate_access(domain, "", ""))
         return Vector<ByteString> {};
-    auto& config = ensure_domain_config(domain);
-    return { config.groups() };
+
+    auto configs = ensure_domain(socket(), domain);
+    Vector<ByteString> groups = {};
+    for (auto& config : configs) {
+        groups.extend(config.groups());
+    }
+    return groups;
 }
 
 Messages::ConfigServer::ReadStringValueResponse ConnectionFromClient::read_string_value(ByteString const& domain, ByteString const& group, ByteString const& key)
@@ -170,10 +226,12 @@ Messages::ConfigServer::ReadStringValueResponse ConnectionFromClient::read_strin
         return nullptr;
     }
 
-    auto& config = ensure_domain_config(domain);
-    if (!config.has_key(group, key))
-        return Optional<ByteString> {};
-    return Optional<ByteString> { config.read_entry(group, key) };
+    auto configs = ensure_domain(socket(), domain);
+    for (auto& config : configs) {
+        if (config.has_key(group, key))
+            return Optional<ByteString> { config.read_entry(group, key) };
+    }
+    return Optional<ByteString> {};
 }
 
 Messages::ConfigServer::ReadI32ValueResponse ConnectionFromClient::read_i32_value(ByteString const& domain, ByteString const& group, ByteString const& key)
@@ -184,10 +242,12 @@ Messages::ConfigServer::ReadI32ValueResponse ConnectionFromClient::read_i32_valu
         return nullptr;
     }
 
-    auto& config = ensure_domain_config(domain);
-    if (!config.has_key(group, key))
-        return Optional<i32> {};
-    return Optional<i32> { config.read_num_entry(group, key) };
+    auto configs = ensure_domain(socket(), domain);
+    for (auto& config : configs) {
+        if (config.has_key(group, key))
+            return Optional<i32> { config.read_num_entry<i32>(group, key) };
+    }
+    return Optional<i32> {};
 }
 
 Messages::ConfigServer::ReadU32ValueResponse ConnectionFromClient::read_u32_value(ByteString const& domain, ByteString const& group, ByteString const& key)
@@ -198,10 +258,12 @@ Messages::ConfigServer::ReadU32ValueResponse ConnectionFromClient::read_u32_valu
         return nullptr;
     }
 
-    auto& config = ensure_domain_config(domain);
-    if (!config.has_key(group, key))
-        return Optional<u32> {};
-    return Optional<u32> { config.read_num_entry<u32>(group, key) };
+    auto configs = ensure_domain(socket(), domain);
+    for (auto& config : configs) {
+        if (config.has_key(group, key))
+            return Optional<u32> { config.read_num_entry<u32>(group, key) };
+    }
+    return Optional<u32> {};
 }
 
 Messages::ConfigServer::ReadBoolValueResponse ConnectionFromClient::read_bool_value(ByteString const& domain, ByteString const& group, ByteString const& key)
@@ -212,10 +274,12 @@ Messages::ConfigServer::ReadBoolValueResponse ConnectionFromClient::read_bool_va
         return nullptr;
     }
 
-    auto& config = ensure_domain_config(domain);
-    if (!config.has_key(group, key))
-        return Optional<bool> {};
-    return Optional<bool> { config.read_bool_entry(group, key) };
+    auto configs = ensure_domain(socket(), domain);
+    for (auto& config : configs) {
+        if (config.has_key(group, key))
+            return Optional<bool> { config.read_bool_entry(group, key) };
+    }
+    return Optional<bool> {};
 }
 
 void ConnectionFromClient::start_or_restart_sync_timer()
@@ -231,8 +295,7 @@ void ConnectionFromClient::write_string_value(ByteString const& domain, ByteStri
     if (!validate_access(domain, group, key))
         return;
 
-    auto& config = ensure_domain_config(domain);
-
+    auto& config = ensure_domain(socket(), domain).first();
     if (config.has_key(group, key) && config.read_entry(group, key) == value)
         return;
 
@@ -250,8 +313,7 @@ void ConnectionFromClient::write_i32_value(ByteString const& domain, ByteString 
     if (!validate_access(domain, group, key))
         return;
 
-    auto& config = ensure_domain_config(domain);
-
+    auto& config = ensure_domain(socket(), domain).first();
     if (config.has_key(group, key) && config.read_num_entry(group, key) == value)
         return;
 
@@ -269,8 +331,7 @@ void ConnectionFromClient::write_u32_value(ByteString const& domain, ByteString 
     if (!validate_access(domain, group, key))
         return;
 
-    auto& config = ensure_domain_config(domain);
-
+    auto& config = ensure_domain(socket(), domain).first();
     if (config.has_key(group, key) && config.read_num_entry<u32>(group, key) == value)
         return;
 
@@ -288,8 +349,7 @@ void ConnectionFromClient::write_bool_value(ByteString const& domain, ByteString
     if (!validate_access(domain, group, key))
         return;
 
-    auto& config = ensure_domain_config(domain);
-
+    auto& config = ensure_domain(socket(), domain).first();
     if (config.has_key(group, key) && config.read_bool_entry(group, key) == value)
         return;
 
@@ -307,17 +367,20 @@ void ConnectionFromClient::remove_key_entry(ByteString const& domain, ByteString
     if (!validate_access(domain, group, key))
         return;
 
-    auto& config = ensure_domain_config(domain);
-    if (!config.has_key(group, key))
+    auto configs = ensure_domain(socket(), domain);
+    for (auto& config : configs) {
+        if (!config.has_key(group, key))
+            continue;
+
+        config.remove_entry(group, key);
+        m_dirty_domains.set(domain);
+        start_or_restart_sync_timer();
+
+        for_each_monitoring_connection(domain, this, [&domain, &group, &key](ConnectionFromClient& connection) {
+            connection.async_notify_removed_key(domain, group, key);
+        });
         return;
-
-    config.remove_entry(group, key);
-    m_dirty_domains.set(domain);
-    start_or_restart_sync_timer();
-
-    for_each_monitoring_connection(domain, this, [&domain, &group, &key](ConnectionFromClient& connection) {
-        connection.async_notify_removed_key(domain, group, key);
-    });
+    }
 }
 
 void ConnectionFromClient::remove_group_entry(ByteString const& domain, ByteString const& group)
@@ -325,17 +388,20 @@ void ConnectionFromClient::remove_group_entry(ByteString const& domain, ByteStri
     if (!validate_access(domain, group, {}))
         return;
 
-    auto& config = ensure_domain_config(domain);
-    if (!config.has_group(group))
+    auto configs = ensure_domain(socket(), domain);
+    for (auto& config : configs) {
+        if (!config.has_group(group))
+            continue;
+
+        config.remove_group(group);
+        m_dirty_domains.set(domain);
+        start_or_restart_sync_timer();
+
+        for_each_monitoring_connection(domain, this, [&domain, &group](ConnectionFromClient& connection) {
+            connection.async_notify_removed_group(domain, group);
+        });
         return;
-
-    config.remove_group(group);
-    m_dirty_domains.set(domain);
-    start_or_restart_sync_timer();
-
-    for_each_monitoring_connection(domain, this, [&domain, &group](ConnectionFromClient& connection) {
-        connection.async_notify_removed_group(domain, group);
-    });
+    }
 }
 
 void ConnectionFromClient::add_group_entry(ByteString const& domain, ByteString const& group)
@@ -343,7 +409,7 @@ void ConnectionFromClient::add_group_entry(ByteString const& domain, ByteString 
     if (!validate_access(domain, group, {}))
         return;
 
-    auto& config = ensure_domain_config(domain);
+    auto& config = ensure_domain(socket(), domain).first();
     if (config.has_group(group))
         return;
 

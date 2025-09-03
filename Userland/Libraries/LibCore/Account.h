@@ -66,6 +66,7 @@ public:
     ByteString const& home_directory() const { return m_home_directory; }
     ByteString const& shell() const { return m_shell; }
     Vector<gid_t> const& extra_gids() const { return m_extra_gids; }
+    bool is_root() const { return m_uid == 0; }
 
     ErrorOr<void> sync();
 

@@ -39,10 +39,10 @@ Configuration Configuration::from_config(StringView libname)
     auto config_file = Core::ConfigFile::open_for_lib(libname).release_value_but_fixme_should_propagate_errors();
 
     // Read behavior options.
-    auto refresh = config_file->read_entry("behavior", "refresh", "lazy");
-    auto operation = config_file->read_entry("behavior", "operation_mode");
-    auto bracketed_paste = config_file->read_bool_entry("behavior", "bracketed_paste", true);
-    auto default_text_editor = config_file->read_entry("behavior", "default_text_editor");
+    auto refresh = config_file->read_entry("Behavior", "Refresh", "Lazy");
+    auto operation = config_file->read_entry("Behavior", "OperationMode");
+    auto bracketed_paste = config_file->read_bool_entry("Behavior", "BracketedPaste", true);
+    auto default_text_editor = config_file->read_entry("Behavior", "DefaultTextEditor");
 
     Configuration::Flags flags { Configuration::Flags::None };
     if (bracketed_paste)
@@ -50,16 +50,16 @@ Configuration Configuration::from_config(StringView libname)
 
     configuration.set(flags);
 
-    if (refresh.equals_ignoring_ascii_case("lazy"sv))
+    if (refresh.equals_ignoring_ascii_case("Lazy"sv))
         configuration.set(Configuration::Lazy);
-    else if (refresh.equals_ignoring_ascii_case("eager"sv))
+    else if (refresh.equals_ignoring_ascii_case("Eager"sv))
         configuration.set(Configuration::Eager);
 
-    if (operation.equals_ignoring_ascii_case("full"sv))
+    if (operation.equals_ignoring_ascii_case("Full"sv))
         configuration.set(Configuration::OperationMode::Full);
-    else if (operation.equals_ignoring_ascii_case("noescapesequences"sv))
+    else if (operation.equals_ignoring_ascii_case("NoEscapeSequences"sv))
         configuration.set(Configuration::OperationMode::NoEscapeSequences);
-    else if (operation.equals_ignoring_ascii_case("noninteractive"sv))
+    else if (operation.equals_ignoring_ascii_case("NonInteractive"sv))
         configuration.set(Configuration::OperationMode::NonInteractive);
     else
         configuration.set(Configuration::OperationMode::Unset);
@@ -71,7 +71,7 @@ Configuration Configuration::from_config(StringView libname)
 
     // Read keybinds.
 
-    for (auto& binding_key : config_file->keys("keybinds")) {
+    for (auto& binding_key : config_file->keys("Keybinds")) {
         GenericLexer key_lexer(binding_key);
         auto has_ctrl = false;
         auto alt = false;
@@ -115,7 +115,7 @@ Configuration Configuration::from_config(StringView libname)
             has_ctrl = false;
         }
 
-        GenericLexer value_lexer { config_file->read_entry("keybinds", binding_key) };
+        GenericLexer value_lexer { config_file->read_entry("Keybinds", binding_key) };
         StringBuilder value_builder;
         while (!value_lexer.is_eof())
             value_builder.append(value_lexer.consume_escaped_character());

@@ -336,6 +336,7 @@ public:
     ErrorOr<ssize_t> send_message(ReadonlyBytes msg, int flags, Vector<int, 1> fds = {});
 
     ErrorOr<pid_t> peer_pid() const;
+    ErrorOr<uid_t> peer_uid() const;
     ErrorOr<Bytes> read_without_waiting(Bytes buffer);
 
     /// Release the fd associated with this LocalSocket. After the fd is

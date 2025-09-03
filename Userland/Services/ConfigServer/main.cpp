@@ -12,10 +12,11 @@
 
 ErrorOr<int> serenity_main(Main::Arguments)
 {
-    TRY(Core::System::pledge("stdio accept rpath wpath cpath"));
-    TRY(Core::System::unveil(Core::StandardPaths::config_directory(), "rwc"sv));
-    TRY(Core::System::unveil(Core::StandardPaths::home_directory(), "rwc"sv));
-    TRY(Core::System::unveil(nullptr, nullptr));
+    // TRY(Core::System::pledge("stdio accept rpath wpath cpath unix"));
+    // TRY(Core::System::unveil("/home"sv, "rwc"sv));
+    // TRY(Core::System::unveil("/etc"sv, "rwc"sv));
+    // TRY(Core::System::unveil("/sys"sv, "r"sv));
+    // TRY(Core::System::unveil(nullptr, nullptr));
 
     Core::EventLoop event_loop;
 

@@ -17,7 +17,7 @@ namespace Config {
 class Client final
     : public IPC::ConnectionToServer<ConfigClientEndpoint, ConfigServerEndpoint>
     , public ConfigClientEndpoint {
-    IPC_CLIENT_CONNECTION(Client, "/tmp/session/%sid/portal/config"sv)
+    IPC_CLIENT_CONNECTION(Client, "/tmp/portal/config"sv)
 
 public:
     /// Permissive mode makes reads and writes to non-pledged domains into no-ops instead of client misbehavior errors.
