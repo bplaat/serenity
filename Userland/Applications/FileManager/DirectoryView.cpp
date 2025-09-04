@@ -7,9 +7,11 @@
 
 #include "DirectoryView.h"
 #include "FileUtils.h"
+#include <AK/ByteString.h>
 #include <AK/LexicalPath.h>
 #include <AK/NumberFormat.h>
 #include <AK/StringBuilder.h>
+#include <AK/StringView.h>
 #include <LibConfig/Client.h>
 #include <LibCore/Debounce.h>
 #include <LibCore/MimeData.h>
@@ -295,7 +297,7 @@ void DirectoryView::setup_table_view()
     m_table_view->set_model(m_sorting_model);
     m_table_view->set_key_column_and_sort_order(GUI::FileSystemModel::Column::Name, GUI::SortOrder::Ascending);
 
-    auto visible_columns = Config::read_string("FileManager"sv, "DirectoryView"sv, "TableColumns"sv, ""sv);
+    auto visible_columns = config_read_string("TableColumns"sv, ""sv);
     if (visible_columns.is_empty()) {
         m_table_view->set_column_visible(GUI::FileSystemModel::Column::Inode, false);
         m_table_view->set_column_visible(GUI::FileSystemModel::Column::SymlinkTarget, false);
@@ -303,8 +305,11 @@ void DirectoryView::setup_table_view()
         m_table_view->set_visible_columns(visible_columns);
     }
     m_table_view->on_visible_columns_changed = Core::debounce(100, [this]() {
-        auto visible_columns = m_table_view->get_visible_columns().release_value_but_fixme_should_propagate_errors();
-        Config::write_string("FileManager"sv, "DirectoryView"sv, "TableColumns"sv, visible_columns);
+        if (m_mode == Mode::Normal) {
+            auto visible_columns = m_table_view->get_visible_columns().release_value_but_fixme_should_propagate_errors();
+            auto config_group = ByteString::formatted("DirectoryView.{}", path());
+            Config::write_string("FileManager"sv, config_group, "TableColumns"sv, visible_columns);
+        }
     });
 
     m_table_view->on_activation = [&](auto& index) {
@@ -340,30 +345,36 @@ void DirectoryView::model_did_update(unsigned flags)
     update_statusbar();
 }
 
-void DirectoryView::set_view_mode_from_string(ByteString const& mode)
-{
-    if (m_mode == Mode::Desktop)
-        return;
-
-    if (mode.contains("Table"sv)) {
-        set_view_mode(DirectoryView::ViewMode::Table);
-        m_view_as_table_action->set_checked(true);
-    } else if (mode.contains("Columns"sv)) {
-        set_view_mode(DirectoryView::ViewMode::Columns);
-        m_view_as_columns_action->set_checked(true);
-    } else {
-        set_view_mode(DirectoryView::ViewMode::Icon);
-        m_view_as_icons_action->set_checked(true);
-    }
-}
-
 void DirectoryView::config_string_did_change(StringView domain, StringView group, StringView key, StringView value)
 {
-    if (domain != "FileManager" || group != "DirectoryView")
+    if (m_mode != Mode::Normal || domain != "FileManager")
+        return;
+
+    auto config_group = ByteString::formatted("DirectoryView.{}", path());
+    if (group != "DirectoryView" && group != config_group)
         return;
 
     if (key == "ViewMode") {
         set_view_mode_from_string(value);
+        return;
+    }
+    if (key == "TableColumns") {
+        m_table_view->set_visible_columns(value);
+        return;
+    }
+}
+
+void DirectoryView::config_bool_did_change(StringView domain, StringView group, StringView key, bool value)
+{
+    if (m_mode != Mode::Normal || domain != "FileManager")
+        return;
+
+    auto config_group = ByteString::formatted("DirectoryView.{}", path());
+    if (group != "DirectoryView" && group != config_group)
+        return;
+
+    if (key == "ShowDotFiles") {
+        set_should_show_dotfiles(value);
         return;
     }
 }
@@ -374,6 +385,17 @@ void DirectoryView::set_view_mode(ViewMode mode)
         return;
     m_view_mode = mode;
     update();
+
+    if (m_mode == Mode::Normal) {
+        auto config_group = ByteString::formatted("DirectoryView.{}", path());
+        if (mode == ViewMode::Table)
+            Config::write_string("FileManager"sv, config_group, "ViewMode"sv, "Table"sv);
+        if (mode == ViewMode::Columns)
+            Config::write_string("FileManager"sv, config_group, "ViewMode"sv, "Columns"sv);
+        if (mode == ViewMode::Icon)
+            Config::write_string("FileManager"sv, config_group, "ViewMode"sv, "Icon"sv);
+    }
+
     if (mode == ViewMode::Table) {
         set_active_widget(m_table_view);
         return;
@@ -387,6 +409,20 @@ void DirectoryView::set_view_mode(ViewMode mode)
         return;
     }
     VERIFY_NOT_REACHED();
+}
+
+void DirectoryView::set_view_mode_from_string(ByteString const& mode)
+{
+    if (mode.contains("Table"sv)) {
+        set_view_mode(DirectoryView::ViewMode::Table);
+        m_view_as_table_action->set_checked(true);
+    } else if (mode.contains("Columns"sv)) {
+        set_view_mode(DirectoryView::ViewMode::Columns);
+        m_view_as_columns_action->set_checked(true);
+    } else {
+        set_view_mode(DirectoryView::ViewMode::Icon);
+        m_view_as_icons_action->set_checked(true);
+    }
 }
 
 void DirectoryView::add_path_to_history(ByteString path)
@@ -416,6 +452,9 @@ bool DirectoryView::open(ByteString const& path)
     if (model().root_path() == real_path) {
         refresh();
     } else {
+        set_view_mode_from_string(config_read_string("ViewMode"sv, "Icon"sv));
+        set_should_show_dotfiles(config_read_bool("ShowDotFiles"sv, false) || path.contains("/."sv));
+
         set_active_widget(&current_view());
         model().set_root_path(real_path);
     }
@@ -488,6 +527,11 @@ void DirectoryView::update_statusbar()
 
 void DirectoryView::set_should_show_dotfiles(bool show_dotfiles)
 {
+    if (m_model->should_show_dotfiles() != show_dotfiles) {
+        auto config_group = ByteString::formatted("DirectoryView.{}", path());
+        Config::write_bool("FileManager"sv, config_group, "ShowDotFiles"sv, show_dotfiles);
+    }
+
     m_model->set_should_show_dotfiles(show_dotfiles);
 }
 
@@ -643,21 +687,18 @@ void DirectoryView::setup_actions()
     m_view_as_icons_action = GUI::Action::create_checkable(
         "View as &Icons", { Mod_Ctrl, KeyCode::Key_1 }, Gfx::Bitmap::load_from_file("/res/icons/16x16/icon-view.png"sv).release_value_but_fixme_should_propagate_errors(), [&](GUI::Action const&) {
             set_view_mode(DirectoryView::ViewMode::Icon);
-            Config::write_string("FileManager"sv, "DirectoryView"sv, "ViewMode"sv, "Icon"sv);
         },
         window());
 
     m_view_as_table_action = GUI::Action::create_checkable(
         "View as &Table", { Mod_Ctrl, KeyCode::Key_2 }, Gfx::Bitmap::load_from_file("/res/icons/16x16/table-view.png"sv).release_value_but_fixme_should_propagate_errors(), [&](GUI::Action const&) {
             set_view_mode(DirectoryView::ViewMode::Table);
-            Config::write_string("FileManager"sv, "DirectoryView"sv, "ViewMode"sv, "Table"sv);
         },
         window());
 
     m_view_as_columns_action = GUI::Action::create_checkable(
         "View as &Columns", { Mod_Ctrl, KeyCode::Key_3 }, Gfx::Bitmap::load_from_file("/res/icons/16x16/columns-view.png"sv).release_value_but_fixme_should_propagate_errors(), [&](GUI::Action const&) {
             set_view_mode(DirectoryView::ViewMode::Columns);
-            Config::write_string("FileManager"sv, "DirectoryView"sv, "ViewMode"sv, "Columns"sv);
         },
         window());
 
@@ -676,6 +717,24 @@ void DirectoryView::handle_drop(GUI::ModelIndex const& index, GUI::DropEvent con
 
     if (has_accepted_drop && on_accepted_drop)
         on_accepted_drop();
+}
+
+ByteString DirectoryView::config_read_string(StringView key, StringView fallback) const
+{
+    auto config_group = ByteString::formatted("DirectoryView.{}", path());
+    if (Config::list_keys("FileManager"sv, config_group).contains_slow(key)) {
+        return Config::read_string("FileManager"sv, config_group, key);
+    }
+    return Config::read_string("FileManager"sv, "DirectoryView"sv, key, fallback);
+}
+
+bool DirectoryView::config_read_bool(StringView key, bool fallback) const
+{
+    auto config_group = ByteString::formatted("DirectoryView.{}", path());
+    if (Config::list_keys("FileManager"sv, config_group).contains_slow(key)) {
+        return Config::read_bool("FileManager"sv, config_group, key);
+    }
+    return Config::read_bool("FileManager"sv, "DirectoryView"sv, key, fallback);
 }
 
 }

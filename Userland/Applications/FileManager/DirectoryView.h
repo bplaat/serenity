@@ -73,16 +73,23 @@ public:
     Function<void(int done, int total)> on_thumbnail_progress;
     Function<void()> on_accepted_drop;
 
-    enum ViewMode {
+    enum class ViewMode {
         Invalid,
         Table,
         Columns,
         Icon
     };
-    void set_view_mode(ViewMode);
+    struct DirectoryViewConfigGroup {
+        ViewMode mode { ViewMode::Icon };
+        bool show_dotfiles { false };
+        Optional<ByteString> table_columns;
+    };
     ViewMode view_mode() const { return m_view_mode; }
-
+    void set_view_mode(ViewMode);
     void set_view_mode_from_string(ByteString const&);
+
+    bool should_show_dotfiles() const { return m_model->should_show_dotfiles(); }
+    void set_should_show_dotfiles(bool);
 
     GUI::AbstractView& current_view()
     {
@@ -114,8 +121,6 @@ public:
             callback(*m_columns_view);
     }
 
-    void set_should_show_dotfiles(bool);
-
     GUI::FileSystemModel::Node const& node(GUI::ModelIndex const&) const;
 
     bool is_desktop() const { return m_mode == Mode::Desktop; }
@@ -134,6 +139,7 @@ public:
 
     // ^Config::Listener
     virtual void config_string_did_change(StringView domain, StringView group, StringView key, StringView value) override;
+    virtual void config_bool_did_change(StringView domain, StringView group, StringView key, bool value) override;
 
 private:
     explicit DirectoryView(Mode);
@@ -160,8 +166,11 @@ private:
     void update_statusbar();
     bool can_modify_current_selection();
 
+    ByteString config_read_string(StringView key, StringView fallback) const;
+    bool config_read_bool(StringView key, bool fallback) const;
+
     Mode m_mode { Mode::Normal };
-    ViewMode m_view_mode { Invalid };
+    ViewMode m_view_mode { ViewMode::Invalid };
 
     NonnullRefPtr<GUI::FileSystemModel> m_model;
     NonnullRefPtr<GUI::SortingProxyModel> m_sorting_model;

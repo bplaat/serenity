@@ -1018,21 +1018,12 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
     edit_menu->add_separator();
     edit_menu->add_action(select_all_action);
 
-    auto show_dotfiles_in_view = [&](bool show_dotfiles) {
+    auto show_dotfiles_action = GUI::Action::create_checkable("&Show Dotfiles", { Mod_Ctrl, Key_H }, [&](auto& action) {
+        auto show_dotfiles = action.is_checked();
         directory_view->set_should_show_dotfiles(show_dotfiles);
         directories_model->set_should_show_dotfiles(show_dotfiles);
-    };
-
-    auto show_dotfiles_action = GUI::Action::create_checkable("&Show Dotfiles", { Mod_Ctrl, Key_H }, [&](auto& action) {
-        show_dotfiles_in_view(action.is_checked());
         refresh_tree_view();
-        Config::write_bool("FileManager"sv, "DirectoryView"sv, "ShowDotFiles"sv, action.is_checked());
     });
-
-    auto show_dotfiles = Config::read_bool("FileManager"sv, "DirectoryView"sv, "ShowDotFiles"sv, false);
-    show_dotfiles |= initial_location.contains("/."sv);
-    show_dotfiles_action->set_checked(show_dotfiles);
-    show_dotfiles_in_view(show_dotfiles);
 
     auto view_menu = window->add_menu("&View"_string);
     auto layout_menu = view_menu->add_submenu("&Layout"_string);
@@ -1125,6 +1116,8 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
                 tree_view.set_cursor(new_index, GUI::AbstractView::SelectionUpdate::Set);
             }
         }
+
+        directories_model->set_should_show_dotfiles(directory_view->should_show_dotfiles());
 
         mkdir_action->set_enabled(can_write_in_path);
         touch_action->set_enabled(can_write_in_path);
@@ -1312,8 +1305,6 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
     window->save_size_and_position_on_close("FileManager"sv, "Window"sv);
 
     window->show();
-
-    directory_view->set_view_mode_from_string(Config::read_string("FileManager"sv, "DirectoryView"sv, "ViewMode"sv, "Icon"sv));
 
     if (!entry_focused_on_init.is_empty()) {
         auto matches = directory_view->current_view().model()->matches(entry_focused_on_init, GUI::Model::MatchesFlag::MatchFull | GUI::Model::MatchesFlag::FirstMatchOnly);
