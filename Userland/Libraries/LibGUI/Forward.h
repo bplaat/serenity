@@ -84,6 +84,7 @@ class TextDocument;
 class TextDocumentUndoCommand;
 class TextEditor;
 class ThemeChangeEvent;
+class TimePicker;
 class FontsChangeEvent;
 class Toolbar;
 class ToolbarContainer;

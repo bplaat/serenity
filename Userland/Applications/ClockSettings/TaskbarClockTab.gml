@@ -6,15 +6,15 @@
     }
 
     @GUI::GroupBox {
-        title: "Time format"
-        shrink_to_fit: false
-        fixed_height: 240
+        title: "Clock format"
+        preferred_height: "fit"
         layout: @GUI::VerticalBoxLayout {
             margins: [16, 8, 8]
+            spacing: 8
         }
 
         @GUI::Label {
-            text: "Set the date/time format used by the taskbar clock."
+            text: "Set the format used by the taskbar clock."
             text_alignment: "TopLeft"
         }
 
@@ -25,33 +25,40 @@
             }
 
             @GUI::RadioButton {
-                name: "24hour_radio"
-                text: "24-hour"
+                name: "hhmm_radio"
+                text: "Hours and minutes"
             }
 
             @GUI::RadioButton {
-                name: "12hour_radio"
-                text: "12-hour"
-            }
-
-            @GUI::CheckBox {
-                name: "seconds_checkbox"
-                text: "Show seconds"
+                name: "hhmmss_radio"
+                text: "Hours, minutes and seconds"
             }
 
             @GUI::HorizontalSeparator {}
 
             @GUI::RadioButton {
                 name: "custom_radio"
-                text: "Custom:"
+                text: "Custom format:"
             }
 
-            @GUI::TextBox {
-                name: "custom_format_input"
+            @GUI::Widget {
+                preferred_height: "fit"
+                layout: @GUI::HorizontalBoxLayout {
+                    spacing: 4
+                }
+
+                @GUI::Label {
+                    fixed_width: 18
+                }
+
+                @GUI::TextBox {
+                    name: "custom_format_input"
+                }
             }
         }
 
         @GUI::Widget {
+            preferred_height: "fit"
             layout: @GUI::HorizontalBoxLayout {
                 spacing: 4
             }
@@ -65,7 +72,7 @@
             @GUI::Label {
                 frame_style: "SunkenContainer"
                 name: "clock_preview"
-                text: "12:34:56"
+                text: "15:30:45"
             }
         }
     }

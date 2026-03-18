@@ -1,4 +1,4 @@
-@GUI::Widget {
+@GUI::DatePickerDialogWidget {
     shrink_to_fit: true
     fill_with_background_color: true
     layout: @GUI::VerticalBoxLayout {}
@@ -10,7 +10,6 @@
 
         @GUI::ComboBox {
             name: "month_box"
-            model_only: true
         }
 
         @GUI::SpinBox {
@@ -30,7 +29,6 @@
 
         @GUI::Calendar {
             name: "calendar_view"
-            mode: "Month"
         }
     }
 

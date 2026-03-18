@@ -13,13 +13,13 @@
 #include <LibGUI/TextEditor.h>
 #include <LibGUI/Window.h>
 
-class TimeZoneSettingsWidget final : public GUI::SettingsWindow::Tab {
-    C_OBJECT_ABSTRACT(TimeZoneSettingsWidget)
+class TimeZoneTab final : public GUI::SettingsWindow::Tab {
+    C_OBJECT_ABSTRACT(TimeZoneTab)
 public:
-    static ErrorOr<NonnullRefPtr<TimeZoneSettingsWidget>> create();
+    static ErrorOr<NonnullRefPtr<TimeZoneTab>> create();
 
 private:
-    TimeZoneSettingsWidget();
+    TimeZoneTab();
 
     virtual void second_paint_event(GUI::PaintEvent&) override;
 

@@ -9,6 +9,7 @@
 #include <AK/Assertions.h>
 #include <AK/Endian.h>
 #include <AK/Random.h>
+#include <LibConfig/Client.h>
 #include <LibCore/ArgsParser.h>
 #include <LibCore/System.h>
 #include <LibMain/Main.h>
@@ -109,7 +110,7 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
     // Leap seconds smearing NTP servers:
     // - time.facebook.com , https://engineering.fb.com/production-engineering/ntp-service/ , sine-smears over 18 hours
     // - time.google.com , https://developers.google.com/time/smear , linear-smears over 24 hours
-    ByteString host = "time.google.com"sv;
+    ByteString host;
     Core::ArgsParser args_parser;
     args_parser.add_option(adjust_time, "Gradually adjust system time (requires root)", "adjust", 'a');
     args_parser.add_option(set_time, "Immediately set system time (requires root)", "set", 's');
@@ -117,9 +118,16 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
     args_parser.add_positional_argument(host, "NTP server", "host", Core::ArgsParser::Required::No);
     args_parser.parse(arguments);
 
+    Config::pledge_domain("TimeServer");
+
     TRY(Core::System::unveil("/tmp/portal/lookup", "rw"));
+    TRY(Core::System::unveil("/tmp/portal/config", "rw"));
     TRY(Core::System::unveil("/etc/timezone", "r"));
     TRY(Core::System::unveil(nullptr, nullptr));
+
+    if (host.is_empty()) {
+        host = Config::read_string("TimeServer"sv, "Client"sv, "ServerAddress"sv, "time.google.com"sv);
+    }
 
     if (adjust_time && set_time) {
         warnln("-a and -s are mutually exclusive");

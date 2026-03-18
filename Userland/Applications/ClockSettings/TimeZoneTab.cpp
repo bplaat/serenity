@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#include "TimeZoneSettingsWidget.h"
+#include "TimeZoneTab.h"
 #include <AK/Time.h>
-#include <Applications/ClockSettings/TimeZoneSettingsWidgetGML.h>
+#include <Applications/ClockSettings/TimeZoneTabGML.h>
 #include <LibGUI/ComboBox.h>
 #include <LibGUI/Event.h>
 #include <LibGUI/ImageWidget.h>
@@ -38,28 +38,28 @@ static constexpr auto TIME_ZONE_TEXT_HEIGHT = 40;
 static constexpr auto TIME_ZONE_TEXT_PADDING = 5;
 static constexpr auto TIME_ZONE_TEXT_COLOR = Gfx::Color::from_rgb(0xeaf688);
 
-ErrorOr<NonnullRefPtr<TimeZoneSettingsWidget>> TimeZoneSettingsWidget::create()
+ErrorOr<NonnullRefPtr<TimeZoneTab>> TimeZoneTab::create()
 {
-    auto timezonesettings_widget = TRY(adopt_nonnull_ref_or_enomem(new (nothrow) TimeZoneSettingsWidget));
+    auto timezonetab = TRY(adopt_nonnull_ref_or_enomem(new (nothrow) TimeZoneTab));
 
     auto time_zone_map_bitmap = TRY(Gfx::Bitmap::load_from_file("/res/graphics/map.png"sv));
     auto time_zone_rect = time_zone_map_bitmap->rect().shrunken(TIME_ZONE_MAP_NORTHERN_TRIM, 0, TIME_ZONE_MAP_SOUTHERN_TRIM, 0);
     time_zone_map_bitmap = TRY(time_zone_map_bitmap->cropped(time_zone_rect));
 
-    timezonesettings_widget->m_time_zone_map = *timezonesettings_widget->find_descendant_of_type_named<GUI::ImageWidget>("time_zone_map");
-    timezonesettings_widget->m_time_zone_map->set_bitmap(time_zone_map_bitmap);
+    timezonetab->m_time_zone_map = *timezonetab->find_descendant_of_type_named<GUI::ImageWidget>("time_zone_map");
+    timezonetab->m_time_zone_map->set_bitmap(time_zone_map_bitmap);
 
     auto time_zone_marker = TRY(Gfx::Bitmap::load_from_file("/res/icons/32x32/ladyball.png"sv));
-    timezonesettings_widget->m_time_zone_marker = TRY(time_zone_marker->scaled(0.75f, 0.75f));
+    timezonetab->m_time_zone_marker = TRY(time_zone_marker->scaled(0.75f, 0.75f));
 
-    timezonesettings_widget->set_time_zone_location();
+    timezonetab->set_time_zone_location();
 
-    return timezonesettings_widget;
+    return timezonetab;
 }
 
-TimeZoneSettingsWidget::TimeZoneSettingsWidget()
+TimeZoneTab::TimeZoneTab()
 {
-    load_from_gml(time_zone_settings_widget_gml).release_value_but_fixme_should_propagate_errors();
+    load_from_gml(time_zone_tab_gml).release_value_but_fixme_should_propagate_errors();
 
     static auto time_zones = []() {
         Vector<StringView> time_zones;
@@ -83,7 +83,7 @@ TimeZoneSettingsWidget::TimeZoneSettingsWidget()
     };
 }
 
-void TimeZoneSettingsWidget::second_paint_event(GUI::PaintEvent& event)
+void TimeZoneTab::second_paint_event(GUI::PaintEvent& event)
 {
     GUI::Widget::second_paint_event(event);
 
@@ -117,7 +117,7 @@ void TimeZoneSettingsWidget::second_paint_event(GUI::PaintEvent& event)
     painter.draw_text(text_area, m_time_zone_text, Gfx::TextAlignment::Center);
 }
 
-void TimeZoneSettingsWidget::reset_default_values()
+void TimeZoneTab::reset_default_values()
 {
     m_time_zone = "UTC"sv;
     m_time_zone_combo_box->set_text(m_time_zone);
@@ -127,7 +127,7 @@ void TimeZoneSettingsWidget::reset_default_values()
     update();
 }
 
-void TimeZoneSettingsWidget::apply_settings()
+void TimeZoneTab::apply_settings()
 {
     m_time_zone = m_time_zone_combo_box->text();
 
@@ -136,7 +136,7 @@ void TimeZoneSettingsWidget::apply_settings()
     update();
 }
 
-void TimeZoneSettingsWidget::set_time_zone_location()
+void TimeZoneTab::set_time_zone_location()
 {
     m_time_zone_location = compute_time_zone_location();
 
@@ -150,7 +150,7 @@ void TimeZoneSettingsWidget::set_time_zone_location()
 }
 
 // https://en.wikipedia.org/wiki/Mercator_projection#Derivation
-Optional<Gfx::FloatPoint> TimeZoneSettingsWidget::compute_time_zone_location() const
+Optional<Gfx::FloatPoint> TimeZoneTab::compute_time_zone_location() const
 {
     auto location = TimeZone::get_time_zone_location(m_time_zone);
     if (!location.has_value())
@@ -172,7 +172,7 @@ Optional<Gfx::FloatPoint> TimeZoneSettingsWidget::compute_time_zone_location() c
     return Gfx::FloatPoint { mercadian_x, mercadian_y };
 }
 
-void TimeZoneSettingsWidget::set_time_zone()
+void TimeZoneTab::set_time_zone()
 {
     GUI::Process::spawn_or_show_error(window(), "/bin/timezone"sv, Array { m_time_zone.characters() });
 }

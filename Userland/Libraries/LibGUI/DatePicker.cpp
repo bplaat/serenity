@@ -7,7 +7,7 @@
 #include <LibGUI/Button.h>
 #include <LibGUI/ComboBox.h>
 #include <LibGUI/DatePicker.h>
-#include <LibGUI/DatePickerDialogGML.h>
+#include <LibGUI/DatePickerDialogWidget.h>
 #include <LibGUI/SpinBox.h>
 #include <LibGUI/TextBox.h>
 
@@ -23,8 +23,8 @@ DatePicker::DatePicker(Window* parent_window, String const& title, Core::DateTim
     set_resizable(false);
     set_title(title.to_byte_string());
 
-    auto widget = set_main_widget<Widget>();
-    widget->load_from_gml(date_picker_dialog_gml).release_value_but_fixme_should_propagate_errors();
+    auto widget = MUST(GUI::DatePickerDialogWidget::try_create());
+    set_main_widget(widget.ptr());
 
     auto& calendar = *widget->find_descendant_of_type_named<GUI::Calendar>("calendar_view");
     calendar.on_tile_click = [&]() {
