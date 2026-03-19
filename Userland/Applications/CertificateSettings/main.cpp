@@ -5,6 +5,7 @@
  */
 
 #include "CertificateStoreWidget.h"
+#include <LibCore/ArgsParser.h>
 #include <LibCore/StandardPaths.h>
 #include <LibCore/System.h>
 #include <LibGUI/Application.h>
@@ -16,6 +17,11 @@
 ErrorOr<int> serenity_main(Main::Arguments args)
 {
     TRY(Core::System::pledge("stdio rpath wpath cpath recvfd sendfd unix"));
+
+    StringView selected_tab;
+    Core::ArgsParser args_parser;
+    args_parser.add_option(selected_tab, "Tab, only option is 'certificate'", "open-tab", 't', "tab");
+    args_parser.parse(args);
 
     auto app = TRY(GUI::Application::create(args));
 
@@ -31,6 +37,7 @@ ErrorOr<int> serenity_main(Main::Arguments args)
     (void)TRY(window->add_tab<CertificateSettings::CertificateStoreWidget>("Certificate Store"_string, "certificate"sv));
     window->set_icon(app_icon.bitmap_for_size(16));
 
+    window->set_active_tab(selected_tab);
     window->show();
     return app->exec();
 }
