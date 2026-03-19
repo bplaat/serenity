@@ -6,6 +6,7 @@
 
 #include "MapsSettingsWidget.h"
 #include <LibConfig/Client.h>
+#include <LibCore/ArgsParser.h>
 #include <LibCore/System.h>
 #include <LibGUI/Application.h>
 #include <LibGUI/Icon.h>
@@ -15,6 +16,11 @@
 ErrorOr<int> serenity_main(Main::Arguments arguments)
 {
     TRY(Core::System::pledge("stdio recvfd sendfd rpath unix"));
+
+    StringView selected_tab;
+    Core::ArgsParser args_parser;
+    args_parser.add_option(selected_tab, "Tab, only option is 'maps'", "open-tab", 't', "tab");
+    args_parser.parse(arguments);
 
     auto app = TRY(GUI::Application::create(arguments));
 
@@ -29,6 +35,7 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
 
     (void)TRY(window->add_tab<MapsSettings::MapsSettingsWidget>("Maps"_string, "maps"sv));
 
+    window->set_active_tab(selected_tab);
     window->show();
     return app->exec();
 }
