@@ -25,9 +25,11 @@ ErrorOr<int> serenity_main(Main::Arguments args)
     TRY(Core::System::unveil(nullptr, nullptr));
 
     StringView adapter;
+    StringView selected_tab;
 
     Core::ArgsParser parser;
     parser.add_positional_argument(adapter, "Adapter to display settings for", "adapter", Core::ArgsParser::Required::No);
+    parser.add_option(selected_tab, "Tab, only option is 'network'", "open-tab", 't', "tab");
     parser.parse(args);
 
     auto app = TRY(GUI::Application::create(args));
@@ -44,6 +46,7 @@ ErrorOr<int> serenity_main(Main::Arguments args)
     }
     window->set_icon(app_icon.bitmap_for_size(16));
 
+    window->set_active_tab(selected_tab);
     window->show();
     return app->exec();
 }
