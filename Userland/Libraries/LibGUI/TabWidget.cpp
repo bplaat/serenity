@@ -30,6 +30,7 @@ TabWidget::TabWidget()
 
     REGISTER_MARGINS_PROPERTY("container_margins", container_margins, set_container_margins);
     REGISTER_BOOL_PROPERTY("show_close_buttons", close_button_enabled, set_close_button_enabled);
+    REGISTER_BOOL_PROPERTY("show_add_tab_button", add_tab_button_enabled, set_add_tab_button_enabled);
     REGISTER_BOOL_PROPERTY("show_tab_bar", is_bar_visible, set_bar_visible);
     REGISTER_BOOL_PROPERTY("reorder_allowed", reorder_allowed, set_reorder_allowed);
     REGISTER_BOOL_PROPERTY("uniform_tabs", uniform_tabs, set_uniform_tabs);
@@ -417,7 +418,20 @@ void TabWidget::set_add_tab_button_enabled(bool enabled)
 int TabWidget::compute_tab_width(size_t index) const
 {
     int close_button_offset = m_close_button_enabled ? 16 : 0;
-    return m_uniform_tabs ? uniform_tab_width() : m_tabs[i].width(font()) + close_button_offset;
+    if (m_uniform_tabs)
+        return uniform_tab_width();
+    if (has_vertical_tabs())
+        return m_tabs[index].width(font()) + close_button_offset;
+    // Auto-shrink all tabs evenly when total natural width overflows available bar space.
+    int total = 0;
+    for (auto& tab : m_tabs)
+        total += tab.width(font()) + close_button_offset;
+    int available = width() - bar_margin() * 2;
+    if (m_add_tab_button_enabled)
+        available -= 3 + (bar_height() - 4) + bar_margin();
+    if (total > available && !m_tabs.is_empty())
+        return max(available / (int)m_tabs.size(), m_min_tab_width);
+    return m_tabs[index].width(font()) + close_button_offset;
 }
 
 Gfx::IntRect TabWidget::button_rect(size_t index) const
@@ -480,7 +494,8 @@ Gfx::IntRect TabWidget::add_button_rect() const
         x += compute_tab_width(i);
     }
     int size = bar_height() - 4;
-    Gfx::IntRect rect { x + 4, (bar_height() - size) / 2, size, size };
+    int x_offset = m_tabs.is_empty() ? 0 : 4;
+    Gfx::IntRect rect { x + x_offset, (bar_height() - size) / 2, size, size };
     rect.translate_by(bar_rect().location());
     return rect;
 }
