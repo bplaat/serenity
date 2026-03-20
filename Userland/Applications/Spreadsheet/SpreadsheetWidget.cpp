@@ -113,11 +113,14 @@ SpreadsheetWidget::SpreadsheetWidget(GUI::Window& parent_window, Vector<NonnullR
         if (GUI::InputBox::show(window(), name, "Enter a name:"sv, "New sheet"sv, GUI::InputType::NonemptyText, {}, move(icon)) == GUI::Dialog::ExecResult::OK) {
             Vector<NonnullRefPtr<Sheet>> new_sheets;
             new_sheets.append(m_workbook->add_sheet(name));
-            setup_tabs(move(new_sheets));
+            (void)setup_tabs(move(new_sheets));
         }
     }));
 
-    setup_tabs(m_workbook->sheets());
+    (void)setup_tabs(m_workbook->sheets());
+
+    m_tab_widget->set_add_tab_button_enabled(true);
+    m_tab_widget->on_add_tab_button_click = [&] { add_sheet(); };
 
     m_new_action = GUI::Action::create("Add New Sheet", Gfx::Bitmap::load_from_file("/res/icons/16x16/new-tab.png"sv).release_value_but_fixme_should_propagate_errors(), [&](auto&) {
         add_sheet();
@@ -342,8 +345,9 @@ void SpreadsheetWidget::clipboard_content_did_change(ByteString const& mime_type
         m_paste_action->set_enabled(!sheet->selected_cells().is_empty() && mime_type.starts_with("text/"sv));
 }
 
-void SpreadsheetWidget::setup_tabs(Vector<NonnullRefPtr<Sheet>> new_sheets)
+RefPtr<GUI::Widget> SpreadsheetWidget::setup_tabs(Vector<NonnullRefPtr<Sheet>> new_sheets)
 {
+    RefPtr<GUI::Widget> last_view;
     for (auto& sheet : new_sheets) {
         auto& new_view = m_tab_widget->add_tab<SpreadsheetView>(String::from_byte_string(sheet->name()).release_value_but_fixme_should_propagate_errors(), sheet);
         new_view.model()->on_cell_data_change = [&](auto& cell, auto& previous_data) {
@@ -439,7 +443,9 @@ void SpreadsheetWidget::setup_tabs(Vector<NonnullRefPtr<Sheet>> new_sheets)
 
             static_cast<CellSyntaxHighlighter*>(const_cast<Syntax::Highlighter*>(m_cell_value_editor->syntax_highlighter()))->set_cell(nullptr);
         };
+        last_view = new_view;
     }
+    return last_view;
 }
 
 void SpreadsheetWidget::try_generate_tip_for_input_expression(StringView source, size_t cursor_offset)
@@ -590,7 +596,7 @@ void SpreadsheetWidget::load_file(ByteString const& filename, Core::File& file)
         m_tab_widget->remove_tab(*widget);
     }
 
-    setup_tabs(m_workbook->sheets());
+    (void)setup_tabs(m_workbook->sheets());
     update_window_title();
     GUI::Application::the()->set_most_recently_open_file(filename);
 }
@@ -615,7 +621,7 @@ void SpreadsheetWidget::import_sheets(ByteString const& filename, Core::File& fi
         m_tab_widget->remove_tab(*widget);
     }
 
-    setup_tabs(m_workbook->sheets());
+    (void)setup_tabs(m_workbook->sheets());
     update_window_title();
 }
 
@@ -644,7 +650,8 @@ void SpreadsheetWidget::add_sheet()
 
     Vector<NonnullRefPtr<Sheet>> new_sheets;
     new_sheets.append(m_workbook->add_sheet(name.string_view()));
-    setup_tabs(move(new_sheets));
+    if (auto new_tab = setup_tabs(move(new_sheets)))
+        m_tab_widget->set_active_widget(new_tab.ptr());
 }
 
 void SpreadsheetWidget::add_sheet(NonnullRefPtr<Sheet>&& sheet)
@@ -654,7 +661,7 @@ void SpreadsheetWidget::add_sheet(NonnullRefPtr<Sheet>&& sheet)
     Vector<NonnullRefPtr<Sheet>> new_sheets;
     new_sheets.append(move(sheet));
     m_workbook->sheets().extend(new_sheets);
-    setup_tabs(new_sheets);
+    (void)setup_tabs(new_sheets);
 }
 
 void SpreadsheetWidget::update_window_title()
