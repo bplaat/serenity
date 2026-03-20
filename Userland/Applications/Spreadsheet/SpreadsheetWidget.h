@@ -61,7 +61,7 @@ private:
 
     explicit SpreadsheetWidget(GUI::Window& window, Vector<NonnullRefPtr<Sheet>>&& sheets = {}, bool should_add_sheet_if_empty = true);
 
-    void setup_tabs(Vector<NonnullRefPtr<Sheet>> new_sheets);
+    GUI::Widget* setup_tabs(Vector<NonnullRefPtr<Sheet>> new_sheets);
 
     void try_generate_tip_for_input_expression(StringView source, size_t offset);
 
