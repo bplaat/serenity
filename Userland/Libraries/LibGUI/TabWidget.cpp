@@ -101,7 +101,7 @@ void TabWidget::update_focus_policy()
 {
     FocusPolicy policy;
     if (is_bar_visible() && !m_tabs.is_empty())
-        policy = FocusPolicy::TabFocus;
+        policy = FocusPolicy::ClickFocus;
     else
         policy = FocusPolicy::NoFocus;
     set_focus_policy(policy);
