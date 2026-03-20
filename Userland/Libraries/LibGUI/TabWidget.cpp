@@ -101,7 +101,7 @@ void TabWidget::update_focus_policy()
 {
     FocusPolicy policy;
     if (is_bar_visible() && !m_tabs.is_empty())
-        policy = FocusPolicy::TabFocus;
+        policy = FocusPolicy::ClickFocus;
     else
         policy = FocusPolicy::NoFocus;
     set_focus_policy(policy);
@@ -789,11 +789,15 @@ void TabWidget::keydown_event(KeyEvent& event)
     if (is_focused()) {
         if (!event.modifiers() && event.key() == Key_Left) {
             activate_previous_tab();
+            // if (m_active_widget)
+            //     m_active_widget->set_focus(true);
             event.accept();
             return;
         }
         if (!event.modifiers() && event.key() == Key_Right) {
             activate_next_tab();
+            // if (m_active_widget)
+            //     m_active_widget->set_focus(true);
             event.accept();
             return;
         }
