@@ -3,6 +3,7 @@
  * Copyright (c) 2021-2023, Sam Atkins <atkinssj@serenityos.org>
  * Copyright (c) 2021, Mustafa Quraish <mustafa@cs.toronto.edu>
  * Copyright (c) 2022-2023, the SerenityOS developers.
+ * Copyright (c) 2026, Bastiaan van der Plaat <bastiaan.v.d.plaat@gmail.com>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -18,6 +19,7 @@
 #include <LibConfig/Client.h>
 #include <LibConfig/Listener.h>
 #include <LibCore/ArgsParser.h>
+#include <LibCore/Directory.h>
 #include <LibCore/Process.h>
 #include <LibCore/StandardPaths.h>
 #include <LibCore/System.h>
@@ -41,6 +43,7 @@
 #include <LibGUI/Progressbar.h>
 #include <LibGUI/Splitter.h>
 #include <LibGUI/Statusbar.h>
+#include <LibGUI/TextBox.h>
 #include <LibGUI/Toolbar.h>
 #include <LibGUI/ToolbarContainer.h>
 #include <LibGUI/TreeView.h>
@@ -52,7 +55,6 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
-#include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -1081,6 +1083,63 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
     main_toolbar.add_action(directory_view->view_as_table_action());
     main_toolbar.add_action(directory_view->view_as_columns_action());
 
+    auto toolbar_spacer = TRY(main_toolbar.try_add<GUI::Widget>());
+    toolbar_spacer->set_fill_with_background_color(false);
+
+    auto search_textbox = TRY(main_toolbar.try_add<GUI::TextBox>());
+    search_textbox->set_preferred_width(180);
+    auto search_button = TRY(main_toolbar.try_add<GUI::Button>());
+    search_button->set_icon(TRY(Gfx::Bitmap::load_from_file("/res/icons/16x16/find.png"sv)));
+    search_button->set_fixed_width(24);
+
+    auto do_search = [&] {
+        auto raw_term = ByteString(search_textbox->text()).trim_whitespace();
+        auto search_dir = directory_view->path();
+
+        if (raw_term.is_empty()) {
+            directory_view->clear_search();
+            window->set_title(ByteString::formatted("{} - File Manager", search_dir));
+            return;
+        }
+
+        ByteString pattern;
+        if (raw_term.contains('*'))
+            pattern = raw_term;
+        else
+            pattern = ByteString::formatted("*{}*", raw_term);
+
+        Vector<ByteString> result_paths;
+        Vector<ByteString> dirs_to_search;
+        dirs_to_search.append(search_dir);
+
+        while (!dirs_to_search.is_empty()) {
+            auto dir = dirs_to_search.take_first();
+            auto maybe_error = Core::Directory::for_each_entry(dir, Core::DirIterator::SkipParentAndBaseDir,
+                [&](auto const& entry, auto const& directory) -> ErrorOr<IterationDecision> {
+                    auto full_path = LexicalPath::join(directory.path().string(), entry.name).string();
+                    if (entry.type == Core::DirectoryEntry::Type::Directory) {
+                        dirs_to_search.append(full_path);
+                        if (StringView(entry.name).matches(pattern, CaseSensitivity::CaseInsensitive))
+                            result_paths.append(full_path);
+                    } else {
+                        if (StringView(entry.name).matches(pattern, CaseSensitivity::CaseInsensitive))
+                            result_paths.append(full_path);
+                    }
+                    return IterationDecision::Continue;
+                });
+            if (maybe_error.is_error())
+                dbgln("Search error in {}: {}", dir, maybe_error.error());
+        }
+
+        directory_view->show_search_results(move(result_paths));
+
+        auto folder_name = LexicalPath(search_dir).basename();
+        window->set_title(ByteString::formatted("Search \"{}\": {} - File Manager", raw_term, folder_name));
+    };
+
+    search_button->on_click = [&](auto) { do_search(); };
+    search_textbox->on_return_pressed = [&] { do_search(); };
+
     breadcrumbbar.on_path_change = [&](auto selected_path) {
         if (FileSystem::is_directory(selected_path)) {
             directory_view->open(selected_path);
@@ -1096,6 +1155,10 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
         window->set_icon(bitmap);
 
         window->set_title(ByteString::formatted("{} - File Manager", new_path));
+
+        auto folder_name = LexicalPath(new_path).basename();
+        search_textbox->set_placeholder(ByteString::formatted("Search {}...", folder_name));
+        search_textbox->set_text({});
 
         breadcrumbbar.set_current_path(new_path);
 

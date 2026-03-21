@@ -81,13 +81,39 @@ Vector<NonnullRefPtr<LauncherHandler>> DirectoryView::get_launch_handlers(ByteSt
     return get_launch_handlers(URL::create_with_file_scheme(path));
 }
 
+void DirectoryView::show_search_results(Vector<ByteString> paths)
+{
+    m_is_searching = true;
+    m_search_model->set_paths(move(paths));
+    for_each_view_implementation([&](auto& view) {
+        view.set_model(m_search_model);
+    });
+    set_active_widget(&current_view());
+}
+
+void DirectoryView::clear_search()
+{
+    if (!m_is_searching)
+        return;
+    m_is_searching = false;
+    for_each_view_implementation([&](auto& view) {
+        view.set_model(m_sorting_model);
+    });
+    set_active_widget(&current_view());
+}
+
 void DirectoryView::handle_activation(GUI::ModelIndex const& index)
 {
     if (!index.is_valid())
         return;
 
-    auto& node = this->node(index);
-    auto path = node.full_path();
+    ByteString path;
+    if (m_is_searching) {
+        path = m_search_model->path_for_row(index.row());
+    } else {
+        auto& node = this->node(index);
+        path = node.full_path();
+    }
 
     struct stat st;
     if (stat(path.characters(), &st) < 0) {
@@ -403,6 +429,8 @@ void DirectoryView::add_path_to_history(ByteString path)
 
 bool DirectoryView::open(ByteString const& path)
 {
+    clear_search();
+
     auto error_or_real_path = FileSystem::real_path(path);
     if (error_or_real_path.is_error() || !FileSystem::is_directory(path))
         return false;

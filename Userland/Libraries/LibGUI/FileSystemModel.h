@@ -11,7 +11,7 @@
 #include <LibCore/DateTime.h>
 #include <LibCore/ElapsedTimer.h>
 #include <LibCore/FileWatcher.h>
-#include <LibGUI/Model.h>
+#include <LibGUI/AbstractFileSystemModel.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -19,7 +19,7 @@
 namespace GUI {
 
 class FileSystemModel
-    : public Model
+    : public AbstractFileSystemModel
     , public Weakable<FileSystemModel> {
     friend struct Node;
 
@@ -28,19 +28,6 @@ public:
         Invalid,
         DirectoriesOnly,
         FilesAndDirectories
-    };
-
-    enum Column {
-        Icon = 0,
-        Name,
-        Size,
-        User,
-        Group,
-        Permissions,
-        ModificationTime,
-        Inode,
-        SymlinkTarget,
-        __Count,
     };
 
     struct Node {
@@ -125,16 +112,12 @@ public:
     Function<void(ByteString const& old_name, ByteString const& new_name)> on_rename_successful;
     Function<void()> on_root_path_removed;
 
-    virtual int tree_column() const override { return Column::Name; }
     virtual int row_count(ModelIndex const& = ModelIndex()) const override;
-    virtual int column_count(ModelIndex const& = ModelIndex()) const override;
-    virtual ErrorOr<String> column_name(int) const override;
     virtual Variant data(ModelIndex const&, ModelRole = ModelRole::Display) const override;
     virtual ModelIndex parent_index(ModelIndex const&) const override;
     virtual ModelIndex index(int row, int column = 0, ModelIndex const& parent = ModelIndex()) const override;
     virtual StringView drag_data_type() const override { return "text/uri-list"sv; }
     virtual bool accepts_drag(ModelIndex const&, Core::MimeData const&) const override;
-    virtual bool is_column_sortable(int column_index) const override { return column_index != Column::Icon; }
     virtual bool is_editable(ModelIndex const&) const override;
     virtual bool is_searchable() const override { return true; }
     virtual void set_data(ModelIndex const&, Variant const&) override;

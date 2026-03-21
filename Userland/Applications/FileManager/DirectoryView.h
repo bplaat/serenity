@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "FileSystemSearchModel.h"
 #include <AK/Vector.h>
 #include <LibConfig/Listener.h>
 #include <LibDesktop/Launcher.h>
@@ -56,6 +57,10 @@ public:
     void open_parent_directory();
     void open_previous_directory();
     void open_next_directory();
+
+    void show_search_results(Vector<ByteString> paths);
+    void clear_search();
+    bool is_searching() const { return m_is_searching; }
     int path_history_size() const { return m_path_history.size(); }
     int path_history_position() const { return m_path_history_position; }
     static RefPtr<LauncherHandler> get_default_launch_handler(Vector<NonnullRefPtr<LauncherHandler>> const& handlers);
@@ -164,6 +169,8 @@ private:
 
     NonnullRefPtr<GUI::FileSystemModel> m_model;
     NonnullRefPtr<GUI::SortingProxyModel> m_sorting_model;
+    NonnullRefPtr<FileSystemSearchModel> m_search_model { FileSystemSearchModel::create() };
+    bool m_is_searching { false };
     size_t m_path_history_position { 0 };
     Vector<ByteString> m_path_history;
     void add_path_to_history(ByteString);

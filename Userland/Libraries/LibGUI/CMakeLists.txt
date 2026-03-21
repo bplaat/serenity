@@ -12,6 +12,7 @@ set(SOURCES
     AboutDialog.cpp
     AboutDialogGML.cpp
     AbstractButton.cpp
+    AbstractFileSystemModel.cpp
     AbstractScrollableWidget.cpp
     AbstractSlider.cpp
     AbstractTableView.cpp

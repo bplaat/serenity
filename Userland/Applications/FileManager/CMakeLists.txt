@@ -21,6 +21,7 @@ set(SOURCES
     FileUtils.cpp
     main.cpp
     PropertiesWindow.cpp
+    FileSystemSearchModel.cpp
 )
 
 set(GENERATED_SOURCES

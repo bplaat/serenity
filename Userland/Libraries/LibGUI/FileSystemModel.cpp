@@ -825,36 +825,6 @@ bool FileSystemModel::fetch_thumbnail_for(Node const& node)
     return false;
 }
 
-int FileSystemModel::column_count(ModelIndex const&) const
-{
-    return Column::__Count;
-}
-
-ErrorOr<String> FileSystemModel::column_name(int column) const
-{
-    switch (column) {
-    case Column::Icon:
-        return String {};
-    case Column::Name:
-        return "Name"_string;
-    case Column::Size:
-        return "Size"_string;
-    case Column::User:
-        return "User"_string;
-    case Column::Group:
-        return "Group"_string;
-    case Column::Permissions:
-        return "Mode"_string;
-    case Column::ModificationTime:
-        return "Modified"_string;
-    case Column::Inode:
-        return "Inode"_string;
-    case Column::SymlinkTarget:
-        return "Symlink target"_string;
-    }
-    VERIFY_NOT_REACHED();
-}
-
 bool FileSystemModel::accepts_drag(ModelIndex const& index, Core::MimeData const& mime_data) const
 {
     if (!mime_data.has_urls())
