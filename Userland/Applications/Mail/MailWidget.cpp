@@ -18,6 +18,7 @@
 #include <LibGUI/Menu.h>
 #include <LibGUI/MessageBox.h>
 #include <LibGUI/PasswordInputDialog.h>
+#include <LibGUI/Process.h>
 #include <LibGUI/SortingProxyModel.h>
 #include <LibGUI/Statusbar.h>
 #include <LibGUI/TableView.h>
@@ -133,7 +134,7 @@ ErrorOr<bool> MailWidget::connect_and_login()
     if (server.is_empty()) {
         auto result = GUI::MessageBox::show(window(), "Mail has no servers configured. Do you want configure them now?"sv, "Error"sv, GUI::MessageBox::Type::Error, GUI::MessageBox::InputType::YesNo);
         if (result == GUI::MessageBox::ExecResult::Yes)
-            Desktop::Launcher::open(URL::create_with_file_scheme("/bin/MailSettings"));
+            GUI::Process::spawn_or_show_error(window(), "/bin/MailSettings"sv);
         return false;
     }
 

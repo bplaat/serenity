@@ -294,7 +294,7 @@ ErrorOr<NonnullRefPtr<GUI::Action>> CalendarWidget::create_view_year_action()
 
 ErrorOr<NonnullRefPtr<GUI::Action>> CalendarWidget::create_open_settings_action()
 {
-    return GUI::Action::create("Calendar &Settings", {}, TRY(Gfx::Bitmap::load_from_file("/res/icons/16x16/app-settings.png"sv)), [&](GUI::Action const&) {
+    return GUI::CommonActions::make_settings_action([&](auto&) {
         GUI::Process::spawn_or_show_error(window(), "/bin/CalendarSettings"sv);
     });
 }

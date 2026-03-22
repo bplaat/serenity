@@ -8,17 +8,17 @@
 #include "MailWidget.h"
 #include <LibConfig/Client.h>
 #include <LibCore/System.h>
-#include <LibDesktop/Launcher.h>
 #include <LibGUI/Application.h>
 #include <LibGUI/Icon.h>
 #include <LibGUI/Menu.h>
 #include <LibGUI/Menubar.h>
+#include <LibGUI/Process.h>
 #include <LibGUI/Window.h>
 #include <LibMain/Main.h>
 
 ErrorOr<int> serenity_main(Main::Arguments arguments)
 {
-    TRY(Core::System::pledge("stdio recvfd sendfd rpath unix inet"));
+    TRY(Core::System::pledge("stdio recvfd sendfd rpath unix inet proc exec"));
 
     auto app = TRY(GUI::Application::create(arguments));
 
@@ -26,14 +26,11 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
 
     TRY(Core::System::unveil("/res", "r"));
     TRY(Core::System::unveil("/etc", "r"));
+    TRY(Core::System::unveil("/bin/MailSettings", "x"));
     TRY(Core::System::unveil("/tmp/session/%sid/portal/webcontent", "rw"));
     TRY(Core::System::unveil("/tmp/portal/lookup", "rw"));
     TRY(Core::System::unveil("/tmp/session/%sid/portal/launch", "rw"));
     TRY(Core::System::unveil(nullptr, nullptr));
-
-    TRY(Desktop::Launcher::add_allowed_url(URL::create_with_file_scheme("/bin/MailSettings")));
-    TRY(Desktop::Launcher::add_allowed_handler_with_any_url("/bin/MailSettings"));
-    TRY(Desktop::Launcher::seal_allowlist());
 
     auto window = GUI::Window::construct();
 
@@ -48,6 +45,11 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
 
     auto file_menu = window->add_menu("&File"_string);
 
+    file_menu->add_action(GUI::CommonActions::make_settings_action([&](auto&) {
+        GUI::Process::spawn_or_show_error(window, "/bin/MailSettings"sv);
+    },
+        window));
+    file_menu->add_separator();
     file_menu->add_action(GUI::CommonActions::make_quit_action([&](auto&) {
         mail_widget->on_window_close();
         app->quit();
