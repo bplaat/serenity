@@ -6,6 +6,7 @@
 
 #include <LibGfx/Bitmap.h>
 #include <LibWeb/Bindings/MainThreadVM.h>
+#include <LibWeb/MimeSniff/Resource.h>
 #include <LibWeb/DOM/Document.h>
 #include <LibWeb/Fetch/Infrastructure/HTTP/Responses.h>
 #include <LibWeb/HTML/BrowsingContext.h>
@@ -25,12 +26,34 @@ namespace Web::SVG {
 
 JS_DEFINE_ALLOCATOR(SVGDecodedImageData);
 JS_DEFINE_ALLOCATOR(SVGDecodedImageData::SVGPageClient);
+JS_DEFINE_ALLOCATOR(SVGDecodedImageData::SVGStandalonePageClient);
+
+bool SVGDecodedImageData::sniff(ReadonlyBytes data)
+{
+    // Use the WHATWG MIME sniffing algorithm as the primary check. It recognises the "<?xml"
+    // byte pattern and returns text/xml, which is_xml() catches (covers XML-declared SVGs
+    // as well as any other XML document that might contain SVG).
+    if (MimeSniff::Resource::sniff(data).is_xml())
+        return true;
+
+    // A bare <svg element without an XML declaration is valid SVG but is not covered by the
+    // WHATWG MIME sniffing spec's byte-pattern table, so check the header directly.
+    // Skip leading ASCII whitespace and an optional UTF-8 BOM before looking for the tag.
+    size_t i = 0;
+    while (i < data.size() && (data[i] == ' ' || data[i] == '\t' || data[i] == '\n' || data[i] == '\r'))
+        ++i;
+    if (i + 2 < data.size() && data[i] == 0xEF && data[i + 1] == 0xBB && data[i + 2] == 0xBF)
+        i += 3;
+    auto remainder = data.slice(i);
+    return remainder.starts_with("<svg"sv.bytes()) || remainder.starts_with("<SVG"sv.bytes());
+}
 
 ErrorOr<JS::NonnullGCPtr<SVGDecodedImageData>> SVGDecodedImageData::create(JS::Realm& realm, JS::NonnullGCPtr<Page> host_page, URL::URL const& url, ByteBuffer data)
 {
     auto page_client = SVGPageClient::create(Bindings::main_thread_vm(), host_page);
     auto page = Page::create(Bindings::main_thread_vm(), *page_client);
     page_client->m_svg_page = page.ptr();
+    page->set_is_scripting_enabled(false);
     page->set_top_level_traversable(MUST(Web::HTML::TraversableNavigable::create_a_new_top_level_traversable(*page, nullptr, {})));
     JS::NonnullGCPtr<HTML::Navigable> navigable = page->top_level_traversable();
     auto response = Fetch::Infrastructure::Response::create(navigable->vm());
@@ -66,8 +89,47 @@ ErrorOr<JS::NonnullGCPtr<SVGDecodedImageData>> SVGDecodedImageData::create(JS::R
     return realm.heap().allocate<SVGDecodedImageData>(realm, page, page_client, document, *svg_root);
 }
 
-SVGDecodedImageData::SVGDecodedImageData(JS::NonnullGCPtr<Page> page, JS::NonnullGCPtr<SVGPageClient> page_client, JS::NonnullGCPtr<DOM::Document> document, JS::NonnullGCPtr<SVG::SVGSVGElement> root_element)
-    : m_page(page)
+ErrorOr<JS::NonnullGCPtr<SVGDecodedImageData>> SVGDecodedImageData::create_standalone(URL::URL const& url, ByteBuffer data, Gfx::Palette palette)
+{
+    auto page_client = SVGStandalonePageClient::create(Bindings::main_thread_vm(), move(palette));
+    auto page = Page::create(Bindings::main_thread_vm(), *page_client);
+    page_client->m_svg_page = page.ptr();
+    page->set_is_scripting_enabled(false);
+    page->set_top_level_traversable(MUST(Web::HTML::TraversableNavigable::create_a_new_top_level_traversable(*page, nullptr, {})));
+    JS::NonnullGCPtr<HTML::Navigable> navigable = page->top_level_traversable();
+    auto response = Fetch::Infrastructure::Response::create(navigable->vm());
+    response->url_list().append(url);
+    auto navigation_params = navigable->heap().allocate_without_realm<HTML::NavigationParams>();
+    navigation_params->navigable = navigable;
+    navigation_params->response = response;
+    navigation_params->origin = URL::Origin {};
+    navigation_params->policy_container = HTML::PolicyContainer {};
+    navigation_params->final_sandboxing_flag_set = HTML::SandboxingFlagSet {};
+    navigation_params->opener_policy = HTML::OpenerPolicy {};
+
+    auto document = DOM::Document::create_and_initialize(DOM::Document::Type::HTML, "text/html"_string, navigation_params).release_value_but_fixme_should_propagate_errors();
+    navigable->set_ongoing_navigation({});
+    navigable->active_document()->destroy();
+    navigable->active_session_history_entry()->document_state()->set_document(document);
+
+    auto parser = HTML::HTMLParser::create_with_uncertain_encoding(document, data);
+    parser->run(document->url());
+
+    auto* svg_root = document->body()->first_child_of_type<SVG::SVGSVGElement>();
+    if (!svg_root)
+        return Error::from_string_literal("SVGDecodedImageData: Invalid SVG input");
+
+    svg_root->remove();
+    document->remove_all_children();
+    MUST(document->append_child(*svg_root));
+
+    auto& realm = document->realm();
+    return realm.heap().allocate<SVGDecodedImageData>(realm, page, page_client, document, *svg_root, true);
+}
+
+SVGDecodedImageData::SVGDecodedImageData(JS::NonnullGCPtr<Page> page, JS::NonnullGCPtr<PageClient> page_client, JS::NonnullGCPtr<DOM::Document> document, JS::NonnullGCPtr<SVG::SVGSVGElement> root_element, bool fill_viewport)
+    : m_fill_viewport(fill_viewport)
+    , m_page(page)
     , m_page_client(page_client)
     , m_document(document)
     , m_root_element(root_element)
@@ -90,12 +152,49 @@ RefPtr<Gfx::Bitmap> SVGDecodedImageData::render(Gfx::IntSize size) const
     auto bitmap = Gfx::Bitmap::create(Gfx::BitmapFormat::BGRA8888, size).release_value_but_fixme_should_propagate_errors();
     VERIFY(m_document->navigable());
     m_document->navigable()->set_viewport_size(size.to_type<CSSPixels>());
+
+    // Temporarily override fixed width/height so the SVG fills the requested viewport size.
+    // This mirrors how browsers treat SVG-as-image: the image container controls the size,
+    // not the intrinsic dimensions embedded in the SVG file.
+
+    // Save the effective viewBox *before* touching the attributes. SVGSVGElement maintains a
+    // fallback viewBox synthesised from the intrinsic width/height (for SVGs that have fixed
+    // dimensions but no explicit viewBox attribute). Setting width/height to a percentage fires
+    // attribute_changed → update_fallback_view_box_for_svg_as_image(), which clears that fallback
+    // because "100%" is not an absolute dimension. Without preserving it, the layout would render
+    // the SVG at viewport size but with a 1:1 coordinate mapping, leaving all shapes in the corner.
+    auto saved_effective_view_box = m_root_element->view_box();
+
+    auto saved_width = m_root_element->get_attribute("width"_fly_string);
+    auto saved_height = m_root_element->get_attribute("height"_fly_string);
+    m_root_element->set_attribute_value("width"_fly_string, "100%"_string);
+    m_root_element->set_attribute_value("height"_fly_string, "100%"_string);
+
+    // If the fallback viewBox was cleared by the attribute change above, put it back so the
+    // layout engine can map the design coordinate space onto the 100% viewport.
+    if (saved_effective_view_box.has_value() && !m_root_element->view_box().has_value())
+        m_root_element->set_fallback_view_box_for_svg_as_image(saved_effective_view_box);
+
     m_document->update_layout();
 
     auto display_list = Painting::DisplayList::create();
     Painting::DisplayListRecorder display_list_recorder(display_list);
 
     m_document->navigable()->record_display_list(display_list_recorder, {});
+
+    // Restore original attributes after the display list is recorded, so that
+    // intrinsic_width/height queries outside of render() see the original values.
+    if (saved_width.has_value())
+        m_root_element->set_attribute_value("width"_fly_string, saved_width.release_value());
+    else
+        m_root_element->remove_attribute("width"_fly_string);
+    if (saved_height.has_value())
+        m_root_element->set_attribute_value("height"_fly_string, saved_height.release_value());
+    else
+        m_root_element->remove_attribute("height"_fly_string);
+    // Restoring the original width/height attributes above fires attribute_changed →
+    // update_fallback_view_box_for_svg_as_image(), which automatically reconstructs the
+    // fallback from the original absolute values — no manual cleanup needed.
 
     auto painting_command_executor_type = m_page_client->display_list_player_type();
     switch (painting_command_executor_type) {
@@ -185,6 +284,12 @@ void SVGDecodedImageData::SVGPageClient::visit_edges(Visitor& visitor)
 {
     Base::visit_edges(visitor);
     visitor.visit(m_host_page);
+    visitor.visit(m_svg_page);
+}
+
+void SVGDecodedImageData::SVGStandalonePageClient::visit_edges(Visitor& visitor)
+{
+    Base::visit_edges(visitor);
     visitor.visit(m_svg_page);
 }
 

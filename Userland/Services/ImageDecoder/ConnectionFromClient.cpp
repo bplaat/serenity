@@ -10,8 +10,14 @@
 #include <LibGfx/Bitmap.h>
 #include <LibGfx/ImageFormats/ImageDecoder.h>
 #include <LibGfx/ImageFormats/TIFFMetadata.h>
+#include <LibThreading/ConditionVariable.h>
+#include <LibThreading/Mutex.h>
+#include <LibWeb/SVG/SVGDecodedImageData.h>
 
 namespace ImageDecoder {
+
+Core::EventLoop* g_main_event_loop = nullptr;
+RefPtr<Gfx::PaletteImpl> g_svg_palette;
 
 ConnectionFromClient::ConnectionFromClient(NonnullOwnPtr<Core::LocalSocket> socket)
     : IPC::ConnectionFromClient<ImageDecoderClientEndpoint, ImageDecoderServerEndpoint>(*this, move(socket), 1)
@@ -48,7 +54,48 @@ void decode_image_to_bitmaps_and_durations_with_decoder(Gfx::ImageDecoder const&
 
 ErrorOr<ConnectionFromClient::DecodeResult> decode_image_to_details(Core::AnonymousBuffer const& encoded_buffer, Optional<Gfx::IntSize> ideal_size, Optional<ByteString> const& known_mime_type)
 {
-    auto decoder = TRY(Gfx::ImageDecoder::try_create_for_raw_bytes(ReadonlyBytes { encoded_buffer.data<u8>(), encoded_buffer.size() }, known_mime_type));
+    auto bytes = ReadonlyBytes { encoded_buffer.data<u8>(), encoded_buffer.size() };
+
+    // SVG requires LibWeb rendering which must happen on the main thread.
+    // Post the work to the main event loop and wait for the result.
+    if (Web::SVG::SVGDecodedImageData::sniff(bytes)) {
+        Optional<ErrorOr<RefPtr<Gfx::Bitmap>>> result;
+        Threading::Mutex mutex;
+        Threading::ConditionVariable cv(mutex);
+
+        auto data = TRY(ByteBuffer::copy(bytes));
+        auto render_size = ideal_size.value_or(Gfx::IntSize { 256, 256 });
+
+        g_main_event_loop->deferred_invoke([&, data = move(data)]() mutable {
+            Gfx::Palette palette(*g_svg_palette);
+            auto svg_or_error = Web::SVG::SVGDecodedImageData::create_standalone(URL::URL {}, move(data), palette);
+            Threading::MutexLocker lock(mutex);
+            if (svg_or_error.is_error())
+                result = svg_or_error.release_error();
+            else
+                result = svg_or_error.value()->render(render_size);
+            cv.signal();
+        });
+        g_main_event_loop->wake();
+
+        {
+            Threading::MutexLocker lock(mutex);
+            cv.wait_while([&result] { return !result.has_value(); });
+        }
+
+        auto bitmap = TRY(result.release_value());
+        if (!bitmap)
+            return Error::from_string_literal("SVG rendered null bitmap");
+
+        ConnectionFromClient::DecodeResult svg_result;
+        Vector<Optional<NonnullRefPtr<Gfx::Bitmap>>> bitmaps;
+        bitmaps.append(bitmap.release_nonnull());
+        svg_result.bitmaps = { move(bitmaps) };
+        svg_result.durations.append(0);
+        return svg_result;
+    }
+
+    auto decoder = TRY(Gfx::ImageDecoder::try_create_for_raw_bytes(bytes, known_mime_type));
 
     if (!decoder)
         return Error::from_string_literal("Could not find suitable image decoder plugin for data");

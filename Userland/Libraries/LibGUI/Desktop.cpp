@@ -8,8 +8,10 @@
 #include <AK/Badge.h>
 #include <AK/TemporaryChange.h>
 #include <LibConfig/Client.h>
+#include <LibCore/File.h>
 #include <LibGUI/ConnectionToWindowServer.h>
 #include <LibGUI/Desktop.h>
+#include <LibImageDecoderClient/Client.h>
 #include <string.h>
 
 namespace GUI {
@@ -67,11 +69,27 @@ bool Desktop::apply_wallpaper(RefPtr<Gfx::Bitmap const> wallpaper_bitmap, Option
     if (!wallpaper_bitmap && path.has_value() && !path->is_empty()) {
         constexpr auto scale_factor = 1;
         auto maybe_wallpaper_bitmap = Gfx::Bitmap::load_from_file(*path, scale_factor, rect().size());
-        if (maybe_wallpaper_bitmap.is_error()) {
-            dbgln("Failed to load wallpaper bitmap from path: {}", maybe_wallpaper_bitmap.error());
-            return false;
+        if (!maybe_wallpaper_bitmap.is_error()) {
+            wallpaper_bitmap = maybe_wallpaper_bitmap.release_value();
+        } else {
+            // In-process decode failed (e.g. SVG); fall back to the ImageDecoder service.
+            auto file = Core::File::open(*path, Core::File::OpenMode::Read);
+            if (!file.is_error()) {
+                auto data = file.value()->read_until_eof();
+                if (!data.is_error()) {
+                    auto client = ImageDecoderClient::Client::try_create();
+                    if (!client.is_error()) {
+                        auto decoded = client.value()->decode_image(data.value(), {}, {}, rect().size(), {})->await();
+                        if (!decoded.is_error() && !decoded.value().frames.is_empty())
+                            wallpaper_bitmap = decoded.value().frames[0].bitmap;
+                    }
+                }
+            }
+            if (!wallpaper_bitmap) {
+                dbgln("Failed to load wallpaper bitmap from path: {}", maybe_wallpaper_bitmap.error());
+                return false;
+            }
         }
-        wallpaper_bitmap = maybe_wallpaper_bitmap.release_value();
     }
 
     TemporaryChange is_setting_desktop_wallpaper_change(m_is_setting_desktop_wallpaper, true);

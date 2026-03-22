@@ -38,7 +38,7 @@ using namespace ImageViewer;
 
 ErrorOr<int> serenity_main(Main::Arguments arguments)
 {
-    TRY(Core::System::pledge("stdio recvfd sendfd rpath wpath cpath unix thread"));
+    TRY(Core::System::pledge("stdio recvfd sendfd rpath wpath cpath unix thread map_fixed"));
 
     auto app = TRY(GUI::Application::create(arguments));
 
@@ -270,13 +270,14 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
 
     widget.on_image_change = [&](Image const* image) {
         bool should_enable_image_actions = (image != nullptr);
+        bool should_enable_edit_actions = (image != nullptr && image->is_bitmap());
         bool should_enable_forward_actions = (widget.is_next_available() && should_enable_image_actions);
         bool should_enable_backward_actions = (widget.is_previous_available() && should_enable_image_actions);
         delete_action->set_enabled(should_enable_image_actions);
-        rotate_counterclockwise_action->set_enabled(should_enable_image_actions);
-        rotate_clockwise_action->set_enabled(should_enable_image_actions);
-        vertical_flip_action->set_enabled(should_enable_image_actions);
-        horizontal_flip_action->set_enabled(should_enable_image_actions);
+        rotate_counterclockwise_action->set_enabled(should_enable_edit_actions);
+        rotate_clockwise_action->set_enabled(should_enable_edit_actions);
+        vertical_flip_action->set_enabled(should_enable_edit_actions);
+        horizontal_flip_action->set_enabled(should_enable_edit_actions);
         desktop_wallpaper_action->set_enabled(should_enable_image_actions);
 
         go_first_action->set_enabled(should_enable_backward_actions);

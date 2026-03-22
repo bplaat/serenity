@@ -6,6 +6,7 @@
  * Copyright (c) 2022, the SerenityOS developers.
  * Copyright (c) 2023, Caoimhe Byrne <caoimhebyrne06@gmail.com>
  * Copyright (c) 2023, MacDue <macdue@dueutil.tech>
+ * Copyright (c) 2026, Bastiaan van der Plaat <bastiaan.v.d.plaat@gmail.com>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -15,14 +16,22 @@
 #include <LibCore/Timer.h>
 #include <LibGUI/AbstractZoomPanWidget.h>
 #include <LibGUI/Painter.h>
+#include <LibGfx/AffineTransform.h>
 #include <LibGfx/VectorGraphic.h>
+#include <LibJS/Heap/GCPtr.h>
+#include <LibJS/Heap/Handle.h>
+#include <LibWeb/SVG/SVGDecodedImageData.h>
 
 namespace ImageViewer {
+
+ErrorOr<void> ensure_web_initialized();
 
 class Image : public RefCounted<Image> {
 public:
     virtual Gfx::IntSize size() const = 0;
     virtual Gfx::IntRect rect() const { return { {}, size() }; }
+
+    virtual bool is_bitmap() const { return false; }
 
     virtual void flip(Gfx::Orientation) = 0;
     virtual void rotate(Gfx::RotationDirection) = 0;
@@ -64,6 +73,20 @@ private:
     Gfx::AffineTransform m_transform;
 };
 
+class SVGVectorGraphic final : public Gfx::VectorGraphic {
+public:
+    static NonnullRefPtr<SVGVectorGraphic> create(JS::NonnullGCPtr<Web::SVG::SVGDecodedImageData>);
+
+    virtual Gfx::IntSize intrinsic_size() const override { return m_intrinsic_size; }
+    virtual void draw_transformed(Gfx::Painter&, Gfx::AffineTransform) const override;
+
+private:
+    explicit SVGVectorGraphic(JS::NonnullGCPtr<Web::SVG::SVGDecodedImageData>, Gfx::IntSize intrinsic_size);
+
+    JS::Handle<Web::SVG::SVGDecodedImageData> m_svg_data;
+    Gfx::IntSize m_intrinsic_size;
+};
+
 class BitmapImage final : public Image {
 public:
     static NonnullRefPtr<BitmapImage> create(Gfx::Bitmap& bitmap, Gfx::FloatPoint scale) { return adopt_ref(*new BitmapImage(bitmap, scale)); }
@@ -74,6 +97,8 @@ public:
     virtual void rotate(Gfx::RotationDirection) override;
 
     virtual void draw_into(Gfx::Painter&, Gfx::IntRect const& dest, Gfx::ScalingMode) const override;
+
+    virtual bool is_bitmap() const override { return true; }
 
     virtual ErrorOr<NonnullRefPtr<Gfx::Bitmap>> bitmap(Optional<Gfx::IntSize>) const override
     {

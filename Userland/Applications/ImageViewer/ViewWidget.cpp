@@ -6,6 +6,7 @@
  * Copyright (c) 2022, the SerenityOS developers.
  * Copyright (c) 2023, Caoimhe Byrne <caoimhebyrne06@gmail.com>
  * Copyright (c) 2023, MacDue <macdue@dueutil.tech>
+ * Copyright (c) 2026, Bastiaan van der Plaat <bastiaan.v.d.plaat@gmail.com>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -22,9 +23,18 @@
 #include <LibGUI/MessageBox.h>
 #include <LibGfx/Bitmap.h>
 #include <LibGfx/ImageFormats/ImageDecoder.h>
+#include <LibGfx/ImmutableBitmap.h>
 #include <LibGfx/Orientation.h>
 #include <LibGfx/Palette.h>
 #include <LibImageDecoderClient/Client.h>
+#include <LibURL/URL.h>
+#include <LibWeb/Bindings/MainThreadVM.h>
+#include <LibWeb/HTML/EventLoop/EventLoop.h>
+#include <LibWeb/Platform/EventLoopPlugin.h>
+#include <LibWeb/Platform/EventLoopPluginSerenity.h>
+#include <LibWeb/Platform/FontPlugin.h>
+#include <LibWeb/Platform/FontPluginSerenity.h>
+#include <LibWeb/SVG/SVGDecodedImageData.h>
 
 namespace ImageViewer {
 
@@ -53,6 +63,65 @@ void VectorImage::draw_into(Gfx::Painter& painter, Gfx::IntRect const& dest, Gfx
 ErrorOr<NonnullRefPtr<Gfx::Bitmap>> VectorImage::bitmap(Optional<Gfx::IntSize> ideal_size) const
 {
     return m_vector->bitmap(ideal_size.value_or(size()), m_transform);
+}
+
+SVGVectorGraphic::SVGVectorGraphic(JS::NonnullGCPtr<Web::SVG::SVGDecodedImageData> svg_data, Gfx::IntSize intrinsic_size)
+    : m_svg_data(svg_data)
+    , m_intrinsic_size(intrinsic_size)
+{
+}
+
+NonnullRefPtr<SVGVectorGraphic> SVGVectorGraphic::create(JS::NonnullGCPtr<Web::SVG::SVGDecodedImageData> svg_data)
+{
+    auto intrinsic_w = svg_data->intrinsic_width();
+    auto intrinsic_h = svg_data->intrinsic_height();
+    auto aspect_ratio = svg_data->intrinsic_aspect_ratio();
+
+    constexpr int default_dim = 256;
+    constexpr int max_dim = 4096;
+    Gfx::IntSize svg_size;
+
+    if (intrinsic_w.has_value() && intrinsic_h.has_value()) {
+        svg_size = { max(1, (int)intrinsic_w->to_double()), max(1, (int)intrinsic_h->to_double()) };
+    } else if (intrinsic_w.has_value() && aspect_ratio.has_value()) {
+        int w = max(1, (int)intrinsic_w->to_double());
+        double ratio = aspect_ratio->to_double();
+        svg_size = { w, ratio > 0.0 ? max(1, (int)(w / ratio)) : w };
+    } else if (intrinsic_h.has_value() && aspect_ratio.has_value()) {
+        int h = max(1, (int)intrinsic_h->to_double());
+        double ratio = aspect_ratio->to_double();
+        svg_size = { ratio > 0.0 ? max(1, (int)(h * ratio)) : h, h };
+    } else if (aspect_ratio.has_value()) {
+        double ratio = aspect_ratio->to_double();
+        if (ratio >= 1.0)
+            svg_size = { max(1, (int)(default_dim * ratio)), default_dim };
+        else if (ratio > 0.0)
+            svg_size = { default_dim, max(1, (int)(default_dim / ratio)) };
+        else
+            svg_size = { default_dim, default_dim };
+    } else {
+        svg_size = { default_dim, default_dim };
+    }
+
+    if (svg_size.width() > max_dim || svg_size.height() > max_dim) {
+        if (svg_size.width() >= svg_size.height())
+            svg_size = { max_dim, max(1, max_dim * svg_size.height() / svg_size.width()) };
+        else
+            svg_size = { max(1, max_dim * svg_size.width() / svg_size.height()), max_dim };
+    }
+
+    return adopt_ref(*new SVGVectorGraphic(svg_data, svg_size));
+}
+
+void SVGVectorGraphic::draw_transformed(Gfx::Painter& painter, Gfx::AffineTransform transform) const
+{
+    auto dest_rect = transform.map(Gfx::FloatRect { {}, intrinsic_size() }).to_rounded<int>();
+    if (dest_rect.is_empty())
+        return;
+    auto bitmap = m_svg_data->render(dest_rect.size());
+    if (!bitmap)
+        return;
+    painter.blit(dest_rect.location(), *bitmap, bitmap->rect());
 }
 
 void BitmapImage::flip(Gfx::Orientation orientation)
@@ -216,6 +285,18 @@ void ViewWidget::open_file(String const& path, Core::File& file)
     }
 }
 
+ErrorOr<void> ensure_web_initialized()
+{
+    static bool s_initialized = false;
+    if (s_initialized)
+        return {};
+    Web::Platform::EventLoopPlugin::install(*new Web::Platform::EventLoopPluginSerenity);
+    Web::Platform::FontPlugin::install(*new Web::Platform::FontPluginSerenity);
+    TRY(Web::Bindings::initialize_main_thread_vm(Web::HTML::EventLoop::Type::Window));
+    s_initialized = true;
+    return {};
+}
+
 ErrorOr<void> ViewWidget::try_open_file(String const& path, Core::File& file)
 {
     auto file_data = TRY(file.read_until_eof());
@@ -224,7 +305,14 @@ ErrorOr<void> ViewWidget::try_open_file(String const& path, Core::File& file)
     Vector<Animation::Frame> frames;
     // Note: Doing this check only requires reading the header of images
     // (so if the image is not vector graphics it can be still be decoded OOP).
-    if (auto decoder = TRY(Gfx::ImageDecoder::try_create_for_raw_bytes(file_data)); decoder && decoder->natural_frame_format() == Gfx::NaturalFrameFormat::Vector) {
+    if (path.ends_with_bytes(".svg"sv, CaseSensitivity::CaseInsensitive) || Web::SVG::SVGDecodedImageData::sniff(file_data)) {
+        TRY(ensure_web_initialized());
+        auto url = URL::create_with_file_scheme(path.to_byte_string());
+        auto palette = GUI::Application::the()->palette();
+        auto svg_data = TRY(Web::SVG::SVGDecodedImageData::create_standalone(url, move(file_data), palette));
+
+        frames.append({ VectorImage::create(*SVGVectorGraphic::create(svg_data)), 0 });
+    } else if (auto decoder = TRY(Gfx::ImageDecoder::try_create_for_raw_bytes(file_data)); decoder && decoder->natural_frame_format() == Gfx::NaturalFrameFormat::Vector) {
         // Use in-process decoding for vector graphics.
         is_animated = decoder->is_animated();
         loop_count = decoder->loop_count();

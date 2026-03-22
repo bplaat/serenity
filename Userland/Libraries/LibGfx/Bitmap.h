@@ -42,7 +42,8 @@
     __ENUMERATE_IMAGE_FORMAT(tiff, ".tif")     \
     __ENUMERATE_IMAGE_FORMAT(tiff, ".tiff")    \
     __ENUMERATE_IMAGE_FORMAT(tvg, ".tvg")      \
-    __ENUMERATE_IMAGE_FORMAT(tvg, ".webp")
+    __ENUMERATE_IMAGE_FORMAT(svg, ".svg")      \
+    __ENUMERATE_IMAGE_FORMAT(webp, ".webp")
 
 namespace Gfx {
 

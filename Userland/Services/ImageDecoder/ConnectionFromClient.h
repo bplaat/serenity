@@ -8,6 +8,8 @@
 
 #include <AK/HashMap.h>
 #include <ImageDecoder/Forward.h>
+#include <LibCore/EventLoop.h>
+#include <LibGfx/Palette.h>
 #include <ImageDecoder/ImageDecoderClientEndpoint.h>
 #include <ImageDecoder/ImageDecoderServerEndpoint.h>
 #include <LibGfx/BitmapSequence.h>
@@ -15,6 +17,9 @@
 #include <LibThreading/BackgroundAction.h>
 
 namespace ImageDecoder {
+
+extern Core::EventLoop* g_main_event_loop;
+extern RefPtr<Gfx::PaletteImpl> g_svg_palette;
 
 class ConnectionFromClient final
     : public IPC::ConnectionFromClient<ImageDecoderClientEndpoint, ImageDecoderServerEndpoint> {
