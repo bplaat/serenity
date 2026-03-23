@@ -1,0 +1,42 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: SerenityOS htop porter <noreply@serenityos.org>
+Date: Mon, 23 Mar 2026 00:00:00 +0000
+Subject: [PATCH 2/3] Makefile.am: add SerenityOS platform source files
+
+diff --git a/Makefile.am b/Makefile.am
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -417,5 +417,33 @@ if HTOP_SOLARIS
+ myhtopplatheaders = $(solaris_platform_headers)
+ myhtopplatsources = $(solaris_platform_sources)
+ endif
++
++# SerenityOS
++# ----------
++
++serenity_platform_headers = \
++	generic/gettime.h \
++	generic/hostname.h \
++	generic/uname.h \
++	serenity/jsmn.h \
++	serenity/SerenityMachine.h \
++	serenity/SerenityProcessTable.h \
++	serenity/SerenityProcess.h \
++	serenity/Platform.h \
++	serenity/ProcessField.h
++
++serenity_platform_sources = \
++	generic/gettime.c \
++	generic/hostname.c \
++	generic/uname.c \
++	serenity/SerenityMachine.c \
++	serenity/SerenityProcessTable.c \
++	serenity/SerenityProcess.c \
++	serenity/Platform.c
++
++if HTOP_SERENITY
++myhtopplatheaders = $(serenity_platform_headers)
++myhtopplatsources = $(serenity_platform_sources)
++endif
+ 
+ # Performance Co-Pilot (PCP)
