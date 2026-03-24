@@ -26,6 +26,8 @@ public:
     static Icon git_directory_icon();
     static Icon git_directory_open_icon();
     static Icon desktop_directory_icon();
+    static Icon trash_directory_icon();
+    static Icon trash_directory_open_icon();
 };
 
 }

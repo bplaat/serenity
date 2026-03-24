@@ -554,7 +554,13 @@ void DirectoryView::do_delete(bool should_confirm)
 {
     auto paths = selected_file_paths();
     VERIFY(!paths.is_empty());
-    delete_paths(paths, should_confirm, window());
+    // Check if we are already inside the trash; if so, delete permanently.
+    auto trash_files_path = ByteString::formatted("{}/files", Core::StandardPaths::trash_directory());
+    if (this->path() == trash_files_path || this->path().starts_with(ByteString::formatted("{}/", trash_files_path))) {
+        delete_paths(paths, should_confirm, window());
+    } else {
+        move_to_trash(paths, should_confirm, window());
+    }
     current_view().selection().clear();
 }
 
@@ -636,8 +642,14 @@ void DirectoryView::setup_actions()
         window());
 
     m_force_delete_action = GUI::Action::create(
-        "Delete Without Confirmation", { Mod_Shift, Key_Delete },
-        [this](auto&) { do_delete(false); },
+        "Delete Permanently Without Confirmation", { Mod_Shift, Key_Delete },
+        [this](auto&) {
+            auto paths = selected_file_paths();
+            if (!paths.is_empty()) {
+                delete_paths(paths, false, window());
+                current_view().selection().clear();
+            }
+        },
         window());
 
     m_view_as_icons_action = GUI::Action::create_checkable(

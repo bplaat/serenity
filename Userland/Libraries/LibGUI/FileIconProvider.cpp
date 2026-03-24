@@ -9,6 +9,7 @@
 #include <AK/ByteString.h>
 #include <AK/LexicalPath.h>
 #include <LibCore/ConfigFile.h>
+#include <LibCore/DirIterator.h>
 #include <LibCore/MappedFile.h>
 #include <LibCore/StandardPaths.h>
 #include <LibCore/System.h>
@@ -34,6 +35,8 @@ static Icon s_home_directory_icon;
 static Icon s_home_directory_open_icon;
 static Icon s_git_directory_icon;
 static Icon s_git_directory_open_icon;
+static Icon s_trash_directory_icon;
+static Icon s_trash_directory_open_icon;
 static Icon s_file_icon;
 static Icon s_symlink_icon;
 static Icon s_socket_icon;
@@ -82,6 +85,8 @@ static void initialize_if_needed()
     s_home_directory_open_icon = Icon::default_icon("home-directory-open"sv);
     s_git_directory_icon = Icon::default_icon("git-directory"sv);
     s_git_directory_open_icon = Icon::default_icon("git-directory-open"sv);
+    s_trash_directory_icon = Icon::default_icon("recycle-bin"sv);
+    s_trash_directory_open_icon = Icon::default_icon("recycle-bin-full"sv);
     s_desktop_directory_icon = Icon::default_icon("desktop"sv);
     s_file_icon = Icon::default_icon("filetype-unknown"sv);
     s_symlink_icon = Icon::default_icon("filetype-symlink"sv);
@@ -138,6 +143,18 @@ Icon FileIconProvider::git_directory_open_icon()
 {
     initialize_if_needed();
     return s_git_directory_open_icon;
+}
+
+Icon FileIconProvider::trash_directory_icon()
+{
+    initialize_if_needed();
+    return s_trash_directory_icon;
+}
+
+Icon FileIconProvider::trash_directory_open_icon()
+{
+    initialize_if_needed();
+    return s_trash_directory_open_icon;
 }
 
 Icon FileIconProvider::filetype_image_icon()
@@ -249,6 +266,12 @@ Icon FileIconProvider::icon_for_path(StringView path, mode_t mode)
             return s_home_directory_icon;
         if (path == Core::StandardPaths::desktop_directory())
             return s_desktop_directory_icon;
+        auto trash_files_path = ByteString::formatted("{}/files", Core::StandardPaths::trash_directory());
+        if (path == trash_files_path) {
+            // Use the "full" icon if there are any files in the trash.
+            Core::DirIterator di(path, Core::DirIterator::SkipParentAndBaseDir);
+            return di.has_next() ? s_trash_directory_open_icon : s_trash_directory_icon;
+        }
         if (Core::System::access(path, R_OK | X_OK).is_error())
             return s_inaccessible_directory_icon;
         if (path.ends_with(".git"sv))

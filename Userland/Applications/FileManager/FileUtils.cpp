@@ -23,9 +23,9 @@ void delete_paths(Vector<ByteString> const& paths, bool should_confirm, GUI::Win
 {
     ByteString message;
     if (paths.size() == 1) {
-        message = ByteString::formatted("Are you sure you want to delete \"{}\"?", LexicalPath::basename(paths[0]));
+        message = ByteString::formatted("Are you sure you want to permanently delete \"{}\"?", LexicalPath::basename(paths[0]));
     } else {
-        message = ByteString::formatted("Are you sure you want to delete {} files?", paths.size());
+        message = ByteString::formatted("Are you sure you want to permanently delete {} files?", paths.size());
     }
 
     if (should_confirm) {
@@ -39,6 +39,29 @@ void delete_paths(Vector<ByteString> const& paths, bool should_confirm, GUI::Win
     }
 
     if (run_file_operation(FileOperation::Delete, paths, {}, parent_window).is_error())
+        _exit(1);
+}
+
+void move_to_trash(Vector<ByteString> const& paths, bool should_confirm, GUI::Window* parent_window)
+{
+    ByteString message;
+    if (paths.size() == 1) {
+        message = ByteString::formatted("Move \"{}\" to the Recycle Bin?", LexicalPath::basename(paths[0]));
+    } else {
+        message = ByteString::formatted("Move {} items to the Recycle Bin?", paths.size());
+    }
+
+    if (should_confirm) {
+        auto result = GUI::MessageBox::show(parent_window,
+            message,
+            "Move to Recycle Bin"sv,
+            GUI::MessageBox::Type::Warning,
+            GUI::MessageBox::InputType::OKCancel);
+        if (result == GUI::MessageBox::ExecResult::Cancel)
+            return;
+    }
+
+    if (run_file_operation(FileOperation::Trash, paths, {}, parent_window).is_error())
         _exit(1);
 }
 
@@ -65,6 +88,9 @@ ErrorOr<void> run_file_operation(FileOperation operation, Vector<ByteString> con
         case FileOperation::Delete:
             file_operation_args.append("Delete"sv);
             break;
+        case FileOperation::Trash:
+            file_operation_args.append("Trash"sv);
+            break;
         default:
             VERIFY_NOT_REACHED();
         }
@@ -72,7 +98,7 @@ ErrorOr<void> run_file_operation(FileOperation operation, Vector<ByteString> con
         for (auto& source : sources)
             file_operation_args.append(source.view());
 
-        if (operation != FileOperation::Delete)
+        if (operation != FileOperation::Delete && operation != FileOperation::Trash)
             file_operation_args.append(destination.view());
 
         TRY(Core::System::exec(file_operation_args.first(), file_operation_args, Core::System::SearchInPath::Yes));
@@ -93,6 +119,9 @@ ErrorOr<void> run_file_operation(FileOperation operation, Vector<ByteString> con
         break;
     case FileOperation::Delete:
         window->set_title("Deleting Files...");
+        break;
+    case FileOperation::Trash:
+        window->set_title("Moving to Recycle Bin...");
         break;
     default:
         VERIFY_NOT_REACHED();

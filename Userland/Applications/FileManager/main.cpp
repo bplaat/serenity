@@ -18,6 +18,8 @@
 #include <LibConfig/Client.h>
 #include <LibConfig/Listener.h>
 #include <LibCore/ArgsParser.h>
+#include <LibCore/ConfigFile.h>
+#include <LibCore/DirIterator.h>
 #include <LibCore/Process.h>
 #include <LibCore/StandardPaths.h>
 #include <LibCore/System.h>
@@ -532,6 +534,34 @@ ErrorOr<int> run_in_desktop_mode()
     desktop_context_menu->add_separator();
     desktop_context_menu->add_action(properties_action);
 
+    auto desktop_trash_files_path = ByteString::formatted("{}/files", Core::StandardPaths::trash_directory());
+    auto desktop_trash_info_path = ByteString::formatted("{}/info", Core::StandardPaths::trash_directory());
+
+    auto desktop_empty_recycle_bin_action = GUI::Action::create(
+        "&Empty Recycle Bin",
+        TRY(Gfx::Bitmap::load_from_file("/res/icons/16x16/recycle-bin.png"sv)),
+        [&](GUI::Action const&) {
+            auto result = GUI::MessageBox::show(window,
+                "Permanently delete all items in the Recycle Bin?"sv,
+                "Empty Recycle Bin"sv,
+                GUI::MessageBox::Type::Warning,
+                GUI::MessageBox::InputType::OKCancel);
+            if (result == GUI::MessageBox::ExecResult::Cancel)
+                return;
+            Vector<ByteString> paths;
+            Core::DirIterator di(desktop_trash_files_path, Core::DirIterator::SkipParentAndBaseDir);
+            while (di.has_next())
+                paths.append(LexicalPath::join(desktop_trash_files_path, di.next_path()).string());
+            if (!paths.is_empty())
+                delete_paths(paths, false, window);
+        },
+        window);
+
+    auto desktop_trash_context_menu = GUI::Menu::construct("Recycle Bin"_string);
+    desktop_trash_context_menu->add_action(file_manager_action);
+    desktop_trash_context_menu->add_separator();
+    desktop_trash_context_menu->add_action(desktop_empty_recycle_bin_action);
+
     RefPtr<GUI::Menu> file_context_menu;
     RefPtr<GUI::Action> file_context_menu_action_default_action;
 
@@ -539,6 +569,12 @@ ErrorOr<int> run_in_desktop_mode()
         if (index.is_valid()) {
             auto& node = directory_view->node(index);
             if (node.is_directory()) {
+                // Check if this is the Trash folder on the desktop
+                auto real_path_or_error = FileSystem::real_path(node.full_path());
+                if (!real_path_or_error.is_error() && real_path_or_error.value() == desktop_trash_files_path) {
+                    desktop_trash_context_menu->popup(event.screen_position(), file_manager_action);
+                    return;
+                }
                 desktop_context_menu->popup(event.screen_position(), file_manager_action);
             } else {
                 file_context_menu = GUI::Menu::construct("Directory View File"_string);
@@ -961,9 +997,67 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
 
     auto tree_view_delete_action = GUI::CommonActions::make_delete_action(
         [&](auto&) {
-            delete_paths(tree_view_selected_file_paths(), true, window);
+            move_to_trash(tree_view_selected_file_paths(), true, window);
         },
         &tree_view);
+
+    auto trash_files_path = ByteString::formatted("{}/files", Core::StandardPaths::trash_directory());
+    auto trash_info_path = ByteString::formatted("{}/info", Core::StandardPaths::trash_directory());
+
+    auto empty_recycle_bin_action = GUI::Action::create(
+        "&Empty Recycle Bin",
+        TRY(Gfx::Bitmap::load_from_file("/res/icons/16x16/recycle-bin.png"sv)),
+        [&](GUI::Action const&) {
+            auto result = GUI::MessageBox::show(window,
+                "Permanently delete all items in the Recycle Bin?"sv,
+                "Empty Recycle Bin"sv,
+                GUI::MessageBox::Type::Warning,
+                GUI::MessageBox::InputType::OKCancel);
+            if (result == GUI::MessageBox::ExecResult::Cancel)
+                return;
+            Vector<ByteString> paths;
+            Core::DirIterator di(trash_files_path, Core::DirIterator::SkipParentAndBaseDir);
+            while (di.has_next())
+                paths.append(LexicalPath::join(trash_files_path, di.next_path()).string());
+            if (!paths.is_empty())
+                delete_paths(paths, false, window);
+        },
+        window);
+
+    auto restore_from_trash_action = GUI::Action::create(
+        "&Restore",
+        TRY(Gfx::Bitmap::load_from_file("/res/icons/16x16/undo.png"sv)),
+        [&](GUI::Action const&) {
+            auto selected_paths = directory_view->selected_file_paths();
+            for (auto& trash_path : selected_paths) {
+                auto name = LexicalPath::basename(trash_path);
+                auto info_file_path = ByteString::formatted("{}/{}.trashinfo", trash_info_path, name);
+
+                // Read original path from .trashinfo
+                auto config_or_error = Core::ConfigFile::open(info_file_path);
+                if (config_or_error.is_error()) {
+                    GUI::MessageBox::show(window,
+                        ByteString::formatted("Could not read trash info for \"{}\"", name),
+                        "Restore Error"sv,
+                        GUI::MessageBox::Type::Error);
+                    continue;
+                }
+                auto original_path = config_or_error.value()->read_entry("Trash Info", "Path");
+                if (original_path.is_empty()) {
+                    GUI::MessageBox::show(window,
+                        ByteString::formatted("No original path for \"{}\"", name),
+                        "Restore Error"sv,
+                        GUI::MessageBox::Type::Error);
+                    continue;
+                }
+                auto original_dir = LexicalPath::dirname(original_path);
+                if (run_file_operation(FileOperation::Move, { trash_path }, original_dir, window).is_error())
+                    continue;
+                // Remove the .trashinfo file
+                (void)Core::System::unlink(info_file_path);
+            }
+        },
+        window);
 
     // This is a little awkward. The menu action does something different depending on which view has focus.
     // It would be nice to find a good abstraction for this instead of creating a branching action like this.
@@ -1081,6 +1175,9 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
     main_toolbar.add_action(directory_view->view_as_table_action());
     main_toolbar.add_action(directory_view->view_as_columns_action());
 
+    auto& empty_recycle_bin_button = main_toolbar.add_action(empty_recycle_bin_action);
+    empty_recycle_bin_button.set_visible(false);
+
     breadcrumbbar.on_path_change = [&](auto selected_path) {
         if (FileSystem::is_directory(selected_path)) {
             directory_view->open(selected_path);
@@ -1095,7 +1192,8 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
         auto* bitmap = icon.bitmap_for_size(16);
         window->set_icon(bitmap);
 
-        window->set_title(ByteString::formatted("{} - File Manager", new_path));
+        bool const in_trash = new_path == trash_files_path || new_path.starts_with(ByteString::formatted("{}/", trash_files_path));
+        window->set_title(in_trash ? "Recycle Bin - File Manager" : ByteString::formatted("{} - File Manager", new_path));
 
         breadcrumbbar.set_current_path(new_path);
 
@@ -1107,9 +1205,9 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
             }
         }
 
-        directory_view->mkdir_action().set_enabled(can_write_in_path);
-        directory_view->touch_action().set_enabled(can_write_in_path);
-        paste_action->set_enabled(can_write_in_path && GUI::Clipboard::the().fetch_mime_type() == "text/uri-list");
+        directory_view->mkdir_action().set_enabled(can_write_in_path && !in_trash);
+        directory_view->touch_action().set_enabled(can_write_in_path && !in_trash);
+        paste_action->set_enabled(can_write_in_path && !in_trash && GUI::Clipboard::the().fetch_mime_type() == "text/uri-list");
         go_forward_action->set_enabled(directory_view->path_history_position() < directory_view->path_history_size() - 1);
         go_back_action->set_enabled(directory_view->path_history_position() > 0);
         open_parent_directory_action->set_enabled(breadcrumbbar.has_parent_segment());
@@ -1117,6 +1215,7 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
         directory_view->view_as_table_action().set_enabled(can_read_in_path);
         directory_view->view_as_icons_action().set_enabled(can_read_in_path);
         directory_view->view_as_columns_action().set_enabled(can_read_in_path);
+        empty_recycle_bin_button.set_visible(in_trash);
     };
 
     directory_view->on_status_message = [&](StringView message) {
@@ -1135,11 +1234,13 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
 
     directory_view->on_selection_change = [&](GUI::AbstractView& view) {
         auto& selection = view.selection();
-        cut_action->set_enabled(!selection.is_empty() && access(directory_view->path().characters(), W_OK) == 0);
-        copy_action->set_enabled(!selection.is_empty());
+        bool const in_trash_view = directory_view->path() == trash_files_path || directory_view->path().starts_with(ByteString::formatted("{}/", trash_files_path));
+        cut_action->set_enabled(!selection.is_empty() && !in_trash_view && access(directory_view->path().characters(), W_OK) == 0);
+        copy_action->set_enabled(!selection.is_empty() && !in_trash_view);
         copy_path_action->set_text(selection.size() > 1 ? "Copy Paths" : "Copy Path");
         focus_dependent_delete_action->set_enabled((!tree_view.selection().is_empty() && tree_view.is_focused())
             || (!directory_view->current_view().selection().is_empty() && access(directory_view->path().characters(), W_OK) == 0));
+        restore_from_trash_action->set_enabled(!selection.is_empty() && in_trash_view);
     };
 
     auto directory_open_action = GUI::Action::create("Open", TRY(Gfx::Bitmap::load_from_file("/res/icons/16x16/open.png"sv)), [&](auto&) {
@@ -1187,8 +1288,19 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
     RefPtr<GUI::Action> file_context_menu_action_default_action;
 
     directory_view->on_context_menu_request = [&](GUI::ModelIndex const& index, GUI::ContextMenuEvent const& event) {
+        bool const in_trash = directory_view->path() == trash_files_path || directory_view->path().starts_with(ByteString::formatted("{}/", trash_files_path));
         if (index.is_valid()) {
             auto& node = directory_view->node(index);
+
+            if (in_trash) {
+                // Special context menu for items inside the Recycle Bin
+                file_context_menu = GUI::Menu::construct("Recycle Bin Item"_string);
+                file_context_menu->add_action(restore_from_trash_action);
+                file_context_menu->add_separator();
+                file_context_menu->add_action(directory_view->delete_action());
+                file_context_menu->popup(event.screen_position(), restore_from_trash_action);
+                return;
+            }
 
             if (node.is_directory()) {
                 auto should_get_enabled = access(node.full_path().characters(), W_OK) == 0 && GUI::Clipboard::the().fetch_mime_type() == "text/uri-list";
@@ -1225,6 +1337,13 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
                 file_context_menu->popup(event.screen_position(), file_context_menu_action_default_action);
             }
         } else {
+            if (in_trash) {
+                // Right-click on empty area inside Recycle Bin
+                auto trash_view_context_menu = GUI::Menu::construct("Recycle Bin"_string);
+                trash_view_context_menu->add_action(empty_recycle_bin_action);
+                trash_view_context_menu->popup(event.screen_position());
+                return;
+            }
             directory_view_context_menu->popup(event.screen_position());
         }
     };

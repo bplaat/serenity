@@ -39,6 +39,9 @@ FileOperationProgressWidget::FileOperationProgressWidget(FileOperation operation
     case FileOperation::Delete:
         destination_folder_icon.load_from_file("/res/icons/32x32/recycle-bin.png"sv);
         break;
+    case FileOperation::Trash:
+        destination_folder_icon.load_from_file("/res/icons/32x32/recycle-bin-full.png"sv);
+        break;
     default:
         destination_folder_icon.load_from_file("/res/icons/32x32/filetype-folder-open.png"sv);
         break;
@@ -64,6 +67,10 @@ FileOperationProgressWidget::FileOperationProgressWidget(FileOperation operation
     case FileOperation::Delete:
         files_copied_label.set_text("Deleting files..."_string);
         current_file_action_label.set_text("Deleting: "_string);
+        break;
+    case FileOperation::Trash:
+        files_copied_label.set_text("Moving to Recycle Bin..."_string);
+        current_file_action_label.set_text("Moving: "_string);
         break;
     default:
         VERIFY_NOT_REACHED();

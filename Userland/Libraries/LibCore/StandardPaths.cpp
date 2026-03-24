@@ -143,6 +143,14 @@ ByteString StandardPaths::data_directory()
     return LexicalPath::canonicalized_path(builder.to_byte_string());
 }
 
+ByteString StandardPaths::trash_directory()
+{
+    StringBuilder builder;
+    builder.append(data_directory());
+    builder.append("/Trash"sv);
+    return LexicalPath::canonicalized_path(builder.to_byte_string());
+}
+
 ErrorOr<ByteString> StandardPaths::runtime_directory()
 {
     if (auto* data_directory = getenv("XDG_RUNTIME_DIR"))

@@ -12,9 +12,11 @@
 #include <LibCore/ArgsParser.h>
 #include <LibCore/DirIterator.h>
 #include <LibCore/File.h>
+#include <LibCore/StandardPaths.h>
 #include <LibCore/System.h>
 #include <LibMain/Main.h>
 #include <sched.h>
+#include <time.h>
 #include <unistd.h>
 
 struct WorkItem {
@@ -37,6 +39,7 @@ static void report_error(StringView message);
 static ErrorOr<int> perform_copy(Vector<StringView> const& sources, ByteString const& destination);
 static ErrorOr<int> perform_move(Vector<StringView> const& sources, ByteString const& destination);
 static ErrorOr<int> perform_delete(Vector<StringView> const& sources);
+static ErrorOr<int> perform_trash(Vector<StringView> const& sources);
 static ErrorOr<int> execute_work_items(Vector<WorkItem> const& items);
 static ErrorOr<NonnullOwnPtr<Core::File>> open_destination_file(ByteString const& destination, mode_t mode);
 static ByteString deduplicate_destination_file_name(ByteString const& destination);
@@ -53,6 +56,9 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
 
     if (operation == "Delete")
         return perform_delete(paths);
+
+    if (operation == "Trash")
+        return perform_trash(paths);
 
     ByteString destination = paths.take_last();
     if (paths.is_empty())
@@ -220,7 +226,71 @@ ErrorOr<int> perform_delete(Vector<StringView> const& sources)
     return execute_work_items(items);
 }
 
-ErrorOr<int> execute_work_items(Vector<WorkItem> const& items)
+static ErrorOr<ByteString> make_trash_info(ByteString const& original_path)
+{
+    // Format deletion date as ISO 8601
+    time_t now = time(nullptr);
+    struct tm tm_info;
+    localtime_r(&now, &tm_info);
+    char date_buf[32];
+    strftime(date_buf, sizeof(date_buf), "%Y-%m-%dT%H:%M:%S", &tm_info);
+    return ByteString::formatted("[Trash Info]\nPath={}\nDeletionDate={}\n", original_path, date_buf);
+}
+
+ErrorOr<int> perform_trash(Vector<StringView> const& sources)
+{
+    auto trash_dir = Core::StandardPaths::trash_directory();
+    auto trash_files = ByteString::formatted("{}/files", trash_dir);
+    auto trash_info_dir = ByteString::formatted("{}/info", trash_dir);
+
+    // Ensure trash directories exist
+    auto ensure_dir = [](ByteString const& path) -> ErrorOr<void> {
+        auto maybe_error = Core::System::mkdir(path, 0755);
+        if (maybe_error.is_error() && maybe_error.error().code() != EEXIST)
+            return maybe_error.release_error();
+        return {};
+    };
+    TRY(ensure_dir(trash_dir));
+    TRY(ensure_dir(trash_files));
+    TRY(ensure_dir(trash_info_dir));
+
+    // Collect move work items: source → trash/files/<name>
+    Vector<WorkItem> items;
+    for (auto& source : sources) {
+        ByteString src { source };
+        ByteString base_name = LexicalPath::basename(src);
+        ByteString dest = LexicalPath::join(trash_files, base_name).string();
+
+        // Deduplicate destination name if needed
+        while (!Core::System::lstat(dest).is_error())
+            dest = deduplicate_destination_file_name(dest);
+
+        // Write .trashinfo metadata before moving
+        ByteString info_name = ByteString::formatted("{}.trashinfo", LexicalPath::basename(dest));
+        ByteString info_path = LexicalPath::join(trash_info_dir, info_name).string();
+        auto info_content = TRY(make_trash_info(src));
+        auto info_file = TRY(Core::File::open(info_path, Core::File::OpenMode::Write | Core::File::OpenMode::Truncate));
+        TRY(info_file->write_until_depleted(info_content.bytes()));
+
+        // Collect move items into trash/files
+        TRY(collect_move_work_items(src, trash_files, items));
+
+        // If name was deduplicated, fix the destination in the last MoveFile item
+        if (LexicalPath::basename(dest) != base_name) {
+            for (size_t j = items.size(); j > 0; --j) {
+                auto& item = items[j - 1];
+                if (item.type == WorkItem::Type::MoveFile && LexicalPath::basename(item.destination) == base_name) {
+                    item.destination = dest;
+                    break;
+                }
+            }
+        }
+    }
+
+    return execute_work_items(items);
+}
+
+static ErrorOr<int> execute_work_items(Vector<WorkItem> const& items)
 {
     off_t total_work_bytes = 0;
     for (auto& item : items)

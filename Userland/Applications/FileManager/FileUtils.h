@@ -17,9 +17,11 @@ enum class FileOperation {
     Copy = 0,
     Move,
     Delete,
+    Trash,
 };
 
 void delete_paths(Vector<ByteString> const&, bool should_confirm, GUI::Window*);
+void move_to_trash(Vector<ByteString> const&, bool should_confirm, GUI::Window*);
 
 ErrorOr<void> run_file_operation(FileOperation, Vector<ByteString> const& sources, ByteString const& destination, GUI::Window*);
 ErrorOr<bool> handle_drop(GUI::DropEvent const& event, ByteString const& destination, GUI::Window* window);
