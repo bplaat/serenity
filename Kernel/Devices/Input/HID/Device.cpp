@@ -5,6 +5,7 @@
  */
 
 #include <Kernel/Debug.h>
+#include <Kernel/Devices/Input/HID/ConsumerControlDriver.h>
 #include <Kernel/Devices/Input/HID/Definitions.h>
 #include <Kernel/Devices/Input/HID/Device.h>
 #include <Kernel/Devices/Input/HID/KeyboardDriver.h>
@@ -46,6 +47,12 @@ ErrorOr<void> Device::initialize()
         case Mouse: {
             auto mouse_driver = TRY(HID::MouseDriver::create(*this, application_collection));
             m_application_collection_drivers.append(move(mouse_driver));
+            break;
+        }
+
+        case ConsumerControl: {
+            auto consumer_driver = TRY(HID::ConsumerControlDriver::create(*this, application_collection));
+            m_application_collection_drivers.append(move(consumer_driver));
             break;
         }
 
