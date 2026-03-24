@@ -1,0 +1,27 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: SerenityOS Developers <serenityos@serenityos.org>
+Date: Mon, 1 Jan 2024 00:00:00 +0000
+Subject: [PATCH] include: Add SerenityOS macros to v8config.h
+
+Add V8_OS_SERENITY detection so C++ code picks the right platform
+paths. SerenityOS is POSIX-compliant, modeled after the Haiku entry.
+---
+ include/v8config.h | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/include/v8config.h b/include/v8config.h
+index 0000000000000000000000000000000000000000..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 100644
+--- a/include/v8config.h
++++ b/include/v8config.h
+@@ -91,6 +91,11 @@
+ # define V8_OS_POSIX 1
+ # define V8_OS_STRING "haiku"
+
++#elif defined(__serenity__)
++# define V8_OS_SERENITY 1
++# define V8_OS_POSIX 1
++# define V8_OS_STRING "serenity"
++
+ #elif defined(__linux__)
+ # define V8_OS_LINUX 1
+ # define V8_OS_POSIX 1

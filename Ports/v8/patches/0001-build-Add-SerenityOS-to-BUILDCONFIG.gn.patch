@@ -1,0 +1,33 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: SerenityOS Developers <serenityos@serenityos.org>
+Date: Mon, 1 Jan 2024 00:00:00 +0000
+Subject: [PATCH] build: Add SerenityOS to BUILDCONFIG.gn
+
+Teach the GN build system about SerenityOS as a POSIX-like target OS.
+---
+ build/config/BUILDCONFIG.gn | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/build/config/BUILDCONFIG.gn b/build/config/BUILDCONFIG.gn
+index 0000000000000000000000000000000000000000..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 100644
+--- a/build/config/BUILDCONFIG.gn
++++ b/build/config/BUILDCONFIG.gn
+@@ -290,6 +290,8 @@ declare_args() {
+   is_fuchsia = false
+   is_ios = false
+   is_linux = false
++  is_serenity = false
+   is_mac = false
+   is_nacl = false
+   is_win = false
+@@ -328,6 +330,10 @@ if (target_os == "android") {
+   is_fuchsia = true
+ } else if (target_os == "ios") {
+   is_ios = true
++} else if (target_os == "serenity") {
++  is_linux = false
++  is_posix = true
++  is_serenity = true
+ } else if (target_os == "linux") {
+   is_linux = true
+ } else if (target_os == "mac") {
