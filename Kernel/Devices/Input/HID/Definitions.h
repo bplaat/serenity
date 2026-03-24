@@ -52,6 +52,14 @@ enum class Usage : u32 {
 
     // Consumer Page (0x0c)
     // https://usb.org/sites/default/files/hut1_6.pdf#chapter.15
+    ConsumerControl = 0x000c'0001,
+    ScanNextTrack = 0x000c'00b5,
+    ScanPreviousTrack = 0x000c'00b6,
+    Stop = 0x000c'00b7,
+    PlayPause = 0x000c'00cd,
+    Mute = 0x000c'00e2,
+    VolumeIncrement = 0x000c'00e9,
+    VolumeDecrement = 0x000c'00ea,
     ACPan = 0x000c'0238,
 };
 
