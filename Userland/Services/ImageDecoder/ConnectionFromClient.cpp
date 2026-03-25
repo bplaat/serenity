@@ -59,6 +59,7 @@ ErrorOr<ConnectionFromClient::DecodeResult> decode_image_to_details(Core::Anonym
 
     ConnectionFromClient::DecodeResult result;
     result.is_animated = decoder->is_animated();
+    result.is_vector = (decoder->natural_frame_format() == Gfx::NaturalFrameFormat::Vector);
     result.loop_count = decoder->loop_count();
 
     Vector<Optional<NonnullRefPtr<Gfx::Bitmap>>> bitmaps;
@@ -108,7 +109,7 @@ NonnullRefPtr<ConnectionFromClient::Job> ConnectionFromClient::make_decode_image
             return TRY(decode_image_to_details(encoded_buffer, ideal_size, mime_type));
         },
         [strong_this = NonnullRefPtr(*this), image_id](DecodeResult result) -> ErrorOr<void> {
-            strong_this->async_did_decode_image(image_id, result.is_animated, result.loop_count, move(result.bitmaps), move(result.durations), result.scale, move(result.icc_data), move(result.metadata), result.gps_location);
+            strong_this->async_did_decode_image(image_id, result.is_animated, result.is_vector, result.loop_count, move(result.bitmaps), move(result.durations), result.scale, move(result.icc_data), move(result.metadata), result.gps_location);
             strong_this->m_pending_jobs.remove(image_id);
             return {};
         },

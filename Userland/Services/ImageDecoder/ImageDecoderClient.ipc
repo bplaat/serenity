@@ -2,6 +2,6 @@
 
 endpoint ImageDecoderClient
 {
-    did_decode_image(i64 image_id, bool is_animated, u32 loop_count, Gfx::BitmapSequence bitmaps, Vector<u32> durations, Gfx::FloatPoint scale, Optional<ByteBuffer> icc_data, OrderedHashMap<String, String> metadata, Optional<Gfx::FloatPoint> gps_location) =|
+    did_decode_image(i64 image_id, bool is_animated, bool is_vector, u32 loop_count, Gfx::BitmapSequence bitmaps, Vector<u32> durations, Gfx::FloatPoint scale, Optional<ByteBuffer> icc_data, OrderedHashMap<String, String> metadata, Optional<Gfx::FloatPoint> gps_location) =|
     did_fail_to_decode_image(i64 image_id, String error_message) =|
 }

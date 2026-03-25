@@ -27,6 +27,7 @@ public:
 
     struct DecodeResult {
         bool is_animated = false;
+        bool is_vector = false;
         u32 loop_count = 0;
         Gfx::FloatPoint scale { 1, 1 };
         Gfx::BitmapSequence bitmaps;

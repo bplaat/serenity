@@ -60,7 +60,7 @@ NonnullRefPtr<Core::Promise<DecodedImage>> Client::decode_image(ReadonlyBytes en
     return promise;
 }
 
-void Client::did_decode_image(i64 image_id, bool is_animated, u32 loop_count, Gfx::BitmapSequence const& bitmap_sequence, Vector<u32> const& durations, Gfx::FloatPoint scale, Optional<ByteBuffer> const& icc_data, OrderedHashMap<String, String> const& metadata, Optional<Gfx::FloatPoint> const& gps_location)
+void Client::did_decode_image(i64 image_id, bool is_animated, bool is_vector, u32 loop_count, Gfx::BitmapSequence const& bitmap_sequence, Vector<u32> const& durations, Gfx::FloatPoint scale, Optional<ByteBuffer> const& icc_data, OrderedHashMap<String, String> const& metadata, Optional<Gfx::FloatPoint> const& gps_location)
 {
     auto const& bitmaps = bitmap_sequence.bitmaps;
     VERIFY(!bitmaps.is_empty());
@@ -74,6 +74,7 @@ void Client::did_decode_image(i64 image_id, bool is_animated, u32 loop_count, Gf
 
     DecodedImage image;
     image.is_animated = is_animated;
+    image.is_vector = is_vector;
     image.loop_count = loop_count;
     image.scale = scale;
     image.icc_data = icc_data;
