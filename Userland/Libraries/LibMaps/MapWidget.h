@@ -13,6 +13,7 @@
 #include <LibGUI/Frame.h>
 #include <LibGUI/Menu.h>
 #include <LibGUI/Painter.h>
+#include <LibImageDecoderClient/Client.h>
 #include <LibProtocol/Request.h>
 #include <LibProtocol/RequestClient.h>
 
@@ -171,6 +172,7 @@ private:
     static Gfx::Color constexpr panel_foreground_color = { 51, 51, 51 };
 
     RefPtr<Protocol::RequestClient> m_request_client;
+    RefPtr<ImageDecoderClient::Client> m_image_decoder_client;
     Vector<RefPtr<Protocol::Request>, TILES_DOWNLOAD_PARALLEL_MAX> m_active_requests;
     Queue<TileKey, 32> m_tile_queue;
     RefPtr<Gfx::Bitmap> m_marker_image;

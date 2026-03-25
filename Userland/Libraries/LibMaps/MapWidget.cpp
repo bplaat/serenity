@@ -11,7 +11,7 @@
 #include <LibGUI/Action.h>
 #include <LibGUI/Application.h>
 #include <LibGUI/Clipboard.h>
-#include <LibGfx/ImageFormats/ImageDecoder.h>
+#include <LibImageDecoderClient/Client.h>
 #include <LibMaps/MapWidget.h>
 #include <LibProtocol/Request.h>
 #include <LibURL/URL.h>
@@ -74,6 +74,7 @@ MapWidget::MapWidget(Options const& options)
     Config::monitor_domain("Maps");
 
     m_request_client = Protocol::RequestClient::try_create().release_value_but_fixme_should_propagate_errors();
+    m_image_decoder_client = ImageDecoderClient::Client::try_create().release_value_but_fixme_should_propagate_errors();
     if (options.attribution_enabled) {
         auto attribution_text = options.attribution_text.value_or(MUST(String::from_byte_string(Config::read_string("Maps"sv, "MapWidget"sv, "TileProviderAttributionText"sv, Maps::default_tile_provider_attribution_text))));
         URL::URL attribution_url = options.attribution_url.value_or(URL::URL(Config::read_string("Maps"sv, "MapWidget"sv, "TileProviderAttributionUrl"sv, Maps::default_tile_provider_attribution_url)));
@@ -411,17 +412,22 @@ void MapWidget::process_tile_queue()
         }
         m_first_image_loaded = true;
 
-        // Decode loaded PNG image data
-        auto decoder_or_err = Gfx::ImageDecoder::try_create_for_raw_bytes(payload, "image/png");
-        if (decoder_or_err.is_error() || !decoder_or_err.value() || (decoder_or_err.value()->frame_count() == 0)) {
-            dbgln("Can't decode image: '{}'", url);
-            return;
-        }
-        auto decoder = decoder_or_err.release_value();
-        m_tiles.set(tile_key, decoder->frame(0).release_value_but_fixme_should_propagate_errors().image);
-
-        // FIXME: only update the part of the screen that this tile covers
-        update();
+        // Decode loaded PNG image data out-of-process via ImageDecoder service
+        (void)m_image_decoder_client->decode_image(
+            payload,
+            [this, tile_key](ImageDecoderClient::DecodedImage& decoded) -> ErrorOr<void> {
+                if (decoded.frames.is_empty())
+                    return Error::from_string_literal("No frames decoded");
+                m_tiles.set(tile_key, decoded.frames[0].bitmap);
+                // FIXME: only update the part of the screen that this tile covers
+                update();
+                return {};
+            },
+            [url](Error&) {
+                dbgln("Can't decode image: '{}'", url);
+            },
+            {},
+            ByteString { "image/png"sv });
     });
 
     request->on_certificate_requested = []() -> Protocol::Request::CertificateAndKey { return {}; };
