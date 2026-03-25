@@ -6,6 +6,7 @@
  * Copyright (c) 2022, the SerenityOS developers.
  * Copyright (c) 2023, Caoimhe Byrne <caoimhebyrne06@gmail.com>
  * Copyright (c) 2023, MacDue <macdue@dueutil.tech>
+ * Copyright (c) 2026, Bastiaan van der Plaat <bastiaan.v.d.plaat@gmail.com>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -21,71 +22,53 @@
 #include <LibGUI/Application.h>
 #include <LibGUI/MessageBox.h>
 #include <LibGfx/Bitmap.h>
-#include <LibGfx/ImageFormats/ImageDecoder.h>
 #include <LibGfx/Orientation.h>
 #include <LibGfx/Palette.h>
-#include <LibImageDecoderClient/Client.h>
 
 namespace ImageViewer {
 
-void VectorImage::flip(Gfx::Orientation orientation)
-{
-    if (orientation == Gfx::Orientation::Horizontal)
-        apply_transform(Gfx::AffineTransform {}.scale(-1, 1));
-    else
-        apply_transform(Gfx::AffineTransform {}.scale(1, -1));
-}
-
-void VectorImage::rotate(Gfx::RotationDirection rotation_direction)
-{
-    if (rotation_direction == Gfx::RotationDirection::Clockwise)
-        apply_transform(Gfx::AffineTransform {}.rotate_radians(AK::Pi<float> / 2));
-    else
-        apply_transform(Gfx::AffineTransform {}.rotate_radians(-AK::Pi<float> / 2));
-    m_size = { m_size.height(), m_size.width() };
-}
-
-void VectorImage::draw_into(Gfx::Painter& painter, Gfx::IntRect const& dest, Gfx::ScalingMode) const
-{
-    m_vector->draw_into(painter, dest, m_transform);
-}
-
-ErrorOr<NonnullRefPtr<Gfx::Bitmap>> VectorImage::bitmap(Optional<Gfx::IntSize> ideal_size) const
-{
-    return m_vector->bitmap(ideal_size.value_or(size()), m_transform);
-}
-
-void BitmapImage::flip(Gfx::Orientation orientation)
+void Image::flip(Gfx::Orientation orientation)
 {
     m_bitmap = m_bitmap->flipped(orientation).release_value_but_fixme_should_propagate_errors();
 }
 
-void BitmapImage::rotate(Gfx::RotationDirection rotation)
+void Image::rotate(Gfx::RotationDirection rotation)
 {
     m_bitmap = m_bitmap->rotated(rotation).release_value_but_fixme_should_propagate_errors();
 }
 
-void BitmapImage::draw_into(Gfx::Painter& painter, Gfx::IntRect const& dest, Gfx::ScalingMode scaling_mode) const
+void Image::draw_into(Gfx::Painter& painter, Gfx::IntRect const& dest, Gfx::ScalingMode scaling_mode) const
 {
     painter.draw_scaled_bitmap(dest, *m_bitmap, m_bitmap->rect(), 1.0f, scaling_mode);
 }
 
 ViewWidget::ViewWidget()
     : m_timer(Core::Timer::try_create().release_value_but_fixme_should_propagate_errors())
+    , m_image_decoder_client(ImageDecoderClient::Client::try_create().release_value_but_fixme_should_propagate_errors())
+    , m_vector_redecode_timer(Core::Timer::create_single_shot(200, [this] { do_vector_redecode(); }))
 {
     set_fill_with_background_color(false);
 }
 
 void ViewWidget::clear()
 {
+    m_vector_redecode_timer->stop();
+    ++m_decode_generation;
+    m_path = {};
+    clear_without_client();
+}
+
+void ViewWidget::clear_without_client()
+{
     m_timer->stop();
     m_animation.clear();
+    m_current_frame_index = 0;
+    m_loops_completed = 0;
     m_image = nullptr;
+    m_is_vector_image = false;
     if (on_image_change)
         on_image_change(m_image);
     set_original_rect({});
-    m_path = {};
-
     reset_view();
     update();
 }
@@ -218,65 +201,48 @@ void ViewWidget::open_file(String const& path, Core::File& file)
 
 ErrorOr<void> ViewWidget::try_open_file(String const& path, Core::File& file)
 {
-    auto file_data = TRY(file.read_until_eof());
-    bool is_animated = false;
-    size_t loop_count = 0;
-    Vector<Animation::Frame> frames;
-    // Note: Doing this check only requires reading the header of images
-    // (so if the image is not vector graphics it can be still be decoded OOP).
-    if (auto decoder = TRY(Gfx::ImageDecoder::try_create_for_raw_bytes(file_data)); decoder && decoder->natural_frame_format() == Gfx::NaturalFrameFormat::Vector) {
-        // Use in-process decoding for vector graphics.
-        is_animated = decoder->is_animated();
-        loop_count = decoder->loop_count();
-        frames.ensure_capacity(decoder->frame_count());
-        for (u32 i = 0; i < decoder->frame_count(); i++) {
-            auto frame_data = TRY(decoder->vector_frame(i));
-            frames.unchecked_append({ VectorImage::create(*frame_data.image), frame_data.duration });
-        }
-    } else {
-        // Use out-of-process decoding for raster formats.
-        auto client = TRY(ImageDecoderClient::Client::try_create());
-        auto mime_type = Core::guess_mime_type_based_on_filename(path);
+    m_encoded_data = TRY(file.read_until_eof());
+    m_mime_type = Core::guess_mime_type_based_on_filename(path);
 
-        // FIXME: Refactor file opening to be more async-aware, and don't await this promise
-        auto decoded_image = TRY(client->decode_image(file_data, {}, {}, OptionalNone {}, mime_type)->await());
-        is_animated = decoded_image.is_animated;
-        loop_count = decoded_image.loop_count;
-        frames.ensure_capacity(decoded_image.frames.size());
-        for (u32 i = 0; i < decoded_image.frames.size(); i++) {
-            auto& frame_data = decoded_image.frames[i];
-            frames.unchecked_append({ BitmapImage::create(frame_data.bitmap, decoded_image.scale), int(frame_data.duration) });
-        }
-    }
-
-    clear();
-
-    m_image = frames[0].image;
-    if (is_animated && frames.size() > 1) {
-        m_animation = Animation { loop_count, move(frames) };
-    }
-
-    set_original_rect(m_image->rect());
-
-    if (m_animation.has_value()) {
-        auto const& first_frame = m_animation->frames[0];
-        m_timer->set_interval(first_frame.duration);
-        m_timer->on_timeout = [this] { animate(); };
-        m_timer->start();
-    } else {
-        m_timer->stop();
-    }
+    // Increment generation so any in-flight decode from a previous file is ignored.
+    auto my_generation = ++m_decode_generation;
 
     set_path(path);
     GUI::Application::the()->set_most_recently_open_file(path.to_byte_string());
 
-    if (on_image_change)
-        on_image_change(m_image);
+    (void)m_image_decoder_client->decode_image(m_encoded_data, [this, my_generation](ImageDecoderClient::DecodedImage& decoded) -> ErrorOr<void> {
+            if (my_generation != m_decode_generation)
+                return {};
+            if (decoded.frames.is_empty())
+                return Error::from_string_literal("No frames in decoded image");
 
-    if (scaled_for_first_image())
-        scale_image_for_window();
-    else
-        reset_view();
+            clear_without_client();
+
+            m_is_vector_image = decoded.is_vector;
+            Vector<Animation::Frame> frames;
+            frames.ensure_capacity(decoded.frames.size());
+            for (auto& frame_data : decoded.frames)
+                frames.unchecked_append({ Image::create(frame_data.bitmap, decoded.scale), int(frame_data.duration) });
+
+            m_image = frames[0].image;
+            if (decoded.is_animated && frames.size() > 1) {
+                m_animation = Animation { decoded.loop_count, move(frames) };
+                m_timer->set_interval(m_animation->frames[0].duration);
+                m_timer->on_timeout = [this] { animate(); };
+                m_timer->start();
+            }
+
+            set_original_rect(m_image->rect());
+            if (on_image_change)
+                on_image_change(m_image);
+            if (scaled_for_first_image())
+                scale_image_for_window();
+            else
+                reset_view();
+            return {}; }, [this, my_generation](Error& error) {
+            if (my_generation != m_decode_generation)
+                return;
+            dbgln("ImageViewer: failed to decode image: {}", error); }, OptionalNone {}, m_mime_type);
 
     return {};
 }
@@ -298,6 +264,35 @@ void ViewWidget::resize_event(GUI::ResizeEvent& event)
 {
     event.accept();
     scale_image_for_window();
+}
+
+void ViewWidget::handle_relayout(Gfx::IntRect const& rect)
+{
+    AbstractZoomPanWidget::handle_relayout(rect);
+    if (m_is_vector_image && m_image)
+        m_vector_redecode_timer->restart();
+}
+
+void ViewWidget::do_vector_redecode()
+{
+    if (!m_is_vector_image || !m_image)
+        return;
+
+    auto current_scale = scale();
+    auto ideal_size = Gfx::IntSize {
+        max(1, round_to<int>(m_image->size().width() * current_scale)),
+        max(1, round_to<int>(m_image->size().height() * current_scale)),
+    };
+
+    auto my_generation = ++m_decode_generation;
+
+    (void)m_image_decoder_client->decode_image(m_encoded_data, [this, my_generation](ImageDecoderClient::DecodedImage& decoded) -> ErrorOr<void> {
+            if (my_generation != m_decode_generation || decoded.frames.is_empty())
+                return {};
+            m_image = Image::create(decoded.frames[0].bitmap, decoded.scale);
+            set_original_rect(m_image->rect());
+            update();
+            return {}; }, [](Error&) { /* silently ignore cancelled/failed zoom re-decodes */ }, ideal_size, m_mime_type);
 }
 
 void ViewWidget::scale_image_for_window()

@@ -6,6 +6,7 @@
  * Copyright (c) 2022, the SerenityOS developers.
  * Copyright (c) 2023, Caoimhe Byrne <caoimhebyrne06@gmail.com>
  * Copyright (c) 2023, MacDue <macdue@dueutil.tech>
+ * Copyright (c) 2026, Bastiaan van der Plaat <bastiaan.v.d.plaat@gmail.com>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -15,73 +16,26 @@
 #include <LibCore/Timer.h>
 #include <LibGUI/AbstractZoomPanWidget.h>
 #include <LibGUI/Painter.h>
-#include <LibGfx/VectorGraphic.h>
+#include <LibImageDecoderClient/Client.h>
 
 namespace ImageViewer {
 
 class Image : public RefCounted<Image> {
 public:
-    virtual Gfx::IntSize size() const = 0;
-    virtual Gfx::IntRect rect() const { return { {}, size() }; }
+    static NonnullRefPtr<Image> create(Gfx::Bitmap& bitmap, Gfx::FloatPoint scale) { return adopt_ref(*new Image(bitmap, scale)); }
 
-    virtual void flip(Gfx::Orientation) = 0;
-    virtual void rotate(Gfx::RotationDirection) = 0;
+    Gfx::IntSize size() const { return { round(m_bitmap->size().width() * m_scale.x()), round(m_bitmap->size().height() * m_scale.y()) }; }
+    Gfx::IntRect rect() const { return { {}, size() }; }
 
-    virtual void draw_into(Gfx::Painter&, Gfx::IntRect const& dest, Gfx::ScalingMode) const = 0;
+    void flip(Gfx::Orientation);
+    void rotate(Gfx::RotationDirection);
 
-    virtual ErrorOr<NonnullRefPtr<Gfx::Bitmap>> bitmap(Optional<Gfx::IntSize> ideal_size) const = 0;
+    void draw_into(Gfx::Painter&, Gfx::IntRect const& dest, Gfx::ScalingMode) const;
 
-    virtual ~Image() = default;
-};
-
-class VectorImage final : public Image {
-public:
-    static NonnullRefPtr<VectorImage> create(Gfx::VectorGraphic& vector) { return adopt_ref(*new VectorImage(vector)); }
-
-    virtual Gfx::IntSize size() const override { return m_size; }
-
-    virtual void flip(Gfx::Orientation) override;
-    virtual void rotate(Gfx::RotationDirection) override;
-
-    virtual void draw_into(Gfx::Painter&, Gfx::IntRect const& dest, Gfx::ScalingMode) const override;
-
-    virtual ErrorOr<NonnullRefPtr<Gfx::Bitmap>> bitmap(Optional<Gfx::IntSize> ideal_size) const override;
+    ErrorOr<NonnullRefPtr<Gfx::Bitmap>> bitmap(Optional<Gfx::IntSize>) const { return m_bitmap; }
 
 private:
-    VectorImage(Gfx::VectorGraphic& vector)
-        : m_vector(vector)
-        , m_size(vector.size())
-    {
-    }
-
-    void apply_transform(Gfx::AffineTransform transform)
-    {
-        m_transform = transform.multiply(m_transform);
-    }
-
-    NonnullRefPtr<Gfx::VectorGraphic> m_vector;
-    Gfx::IntSize m_size;
-    Gfx::AffineTransform m_transform;
-};
-
-class BitmapImage final : public Image {
-public:
-    static NonnullRefPtr<BitmapImage> create(Gfx::Bitmap& bitmap, Gfx::FloatPoint scale) { return adopt_ref(*new BitmapImage(bitmap, scale)); }
-
-    virtual Gfx::IntSize size() const override { return { round(m_bitmap->size().width() * m_scale.x()), round(m_bitmap->size().height() * m_scale.y()) }; }
-
-    virtual void flip(Gfx::Orientation) override;
-    virtual void rotate(Gfx::RotationDirection) override;
-
-    virtual void draw_into(Gfx::Painter&, Gfx::IntRect const& dest, Gfx::ScalingMode) const override;
-
-    virtual ErrorOr<NonnullRefPtr<Gfx::Bitmap>> bitmap(Optional<Gfx::IntSize>) const override
-    {
-        return m_bitmap;
-    }
-
-private:
-    BitmapImage(Gfx::Bitmap& bitmap, Gfx::FloatPoint scale)
+    Image(Gfx::Bitmap& bitmap, Gfx::FloatPoint scale)
         : m_bitmap(bitmap)
         , m_scale(scale)
     {
@@ -104,6 +58,7 @@ public:
     virtual ~ViewWidget() override = default;
 
     Image const* image() const { return m_image.ptr(); }
+    bool is_vector_image() const { return m_is_vector_image; }
     String const& path() const { return m_path; }
     void set_toolbar_height(int height) { m_toolbar_height = height; }
     int toolbar_height() { return m_toolbar_height; }
@@ -137,14 +92,20 @@ private:
     virtual void drag_enter_event(GUI::DragEvent&) override;
     virtual void drop_event(GUI::DropEvent&) override;
     virtual void resize_event(GUI::ResizeEvent&) override;
+    virtual void handle_relayout(Gfx::IntRect const&) override;
 
     void set_image(Image const* image);
     void animate();
+    void clear_without_client();
+    void do_vector_redecode();
     Vector<ByteString> load_files_from_directory(ByteString const& path) const;
     ErrorOr<void> try_open_file(String const&, Core::File&);
 
     String m_path;
     RefPtr<Image> m_image;
+    ByteBuffer m_encoded_data;
+    Optional<ByteString> m_mime_type;
+    bool m_is_vector_image { false };
 
     struct Animation {
         struct Frame {
@@ -161,6 +122,9 @@ private:
     size_t m_current_frame_index { 0 };
     size_t m_loops_completed { 0 };
     NonnullRefPtr<Core::Timer> m_timer;
+    NonnullRefPtr<ImageDecoderClient::Client> m_image_decoder_client;
+    NonnullRefPtr<Core::Timer> m_vector_redecode_timer;
+    u32 m_decode_generation { 0 };
 
     int m_toolbar_height { 28 };
     bool m_scaled_for_first_image { false };
