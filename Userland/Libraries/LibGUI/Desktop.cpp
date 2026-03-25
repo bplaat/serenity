@@ -8,8 +8,10 @@
 #include <AK/Badge.h>
 #include <AK/TemporaryChange.h>
 #include <LibConfig/Client.h>
+#include <LibCore/MappedFile.h>
 #include <LibGUI/ConnectionToWindowServer.h>
 #include <LibGUI/Desktop.h>
+#include <LibImageDecoderClient/Client.h>
 #include <string.h>
 
 namespace GUI {
@@ -65,13 +67,22 @@ bool Desktop::apply_wallpaper(RefPtr<Gfx::Bitmap const> wallpaper_bitmap, Option
         return false;
 
     if (!wallpaper_bitmap && path.has_value() && !path->is_empty()) {
-        constexpr auto scale_factor = 1;
-        auto maybe_wallpaper_bitmap = Gfx::Bitmap::load_from_file(*path, scale_factor, rect().size());
-        if (maybe_wallpaper_bitmap.is_error()) {
-            dbgln("Failed to load wallpaper bitmap from path: {}", maybe_wallpaper_bitmap.error());
+        auto file = Core::MappedFile::map(*path);
+        if (file.is_error()) {
+            dbgln("Failed to map wallpaper file: {}", file.error());
             return false;
         }
-        wallpaper_bitmap = maybe_wallpaper_bitmap.release_value();
+        auto client = ImageDecoderClient::Client::try_create();
+        if (client.is_error()) {
+            dbgln("Failed to create image decoder client: {}", client.error());
+            return false;
+        }
+        auto decoded = client.value()->decode_image(file.value()->bytes(), {}, {}, rect().size(), {})->await();
+        if (decoded.is_error() || decoded.value().frames.is_empty()) {
+            dbgln("Failed to decode wallpaper bitmap");
+            return false;
+        }
+        wallpaper_bitmap = decoded.value().frames[0].bitmap;
     }
 
     TemporaryChange is_setting_desktop_wallpaper_change(m_is_setting_desktop_wallpaper, true);

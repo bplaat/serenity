@@ -21,7 +21,9 @@
 #include <LibCore/Process.h>
 #include <LibCore/StandardPaths.h>
 #include <LibCore/System.h>
+#include <LibCore/MappedFile.h>
 #include <LibDesktop/Launcher.h>
+#include <LibImageDecoderClient/Client.h>
 #include <LibFileSystem/FileSystem.h>
 #include <LibFileSystem/TempFile.h>
 #include <LibGUI/Action.h>
@@ -279,14 +281,23 @@ void do_set_wallpaper(ByteString const& file_path, GUI::Window* window)
         GUI::MessageBox::show(window, ByteString::formatted("Failed to set {} as wallpaper.", file_path), "Failed to set wallpaper"sv, GUI::MessageBox::Type::Error);
     };
 
-    constexpr auto scale_factor = 1;
-    auto bitmap_or_error = Gfx::Bitmap::load_from_file(file_path, scale_factor, GUI::Desktop::the().rect().size());
-    if (bitmap_or_error.is_error()) {
+    auto file = Core::MappedFile::map(file_path);
+    if (file.is_error()) {
+        show_error();
+        return;
+    }
+    auto client = ImageDecoderClient::Client::try_create();
+    if (client.is_error()) {
+        show_error();
+        return;
+    }
+    auto decoded = client.value()->decode_image(file.value()->bytes(), {}, {}, GUI::Desktop::the().rect().size(), {})->await();
+    if (decoded.is_error() || decoded.value().frames.is_empty()) {
         show_error();
         return;
     }
 
-    if (!GUI::Desktop::the().set_wallpaper(bitmap_or_error.release_value(), file_path))
+    if (!GUI::Desktop::the().set_wallpaper(decoded.value().frames[0].bitmap, file_path))
         show_error();
 }
 
