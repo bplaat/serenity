@@ -31,6 +31,9 @@ public:
         Gfx::FloatPoint scale { 1, 1 };
         Gfx::BitmapSequence bitmaps;
         Vector<u32> durations;
+        Optional<ByteBuffer> icc_data;
+        OrderedHashMap<String, String> metadata;
+        Optional<Gfx::FloatPoint> gps_location;
     };
 
 private:

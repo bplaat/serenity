@@ -9,6 +9,7 @@
 #include <ImageDecoder/ImageDecoderClientEndpoint.h>
 #include <LibGfx/Bitmap.h>
 #include <LibGfx/ImageFormats/ImageDecoder.h>
+#include <LibGfx/ImageFormats/ExifGPS.h>
 #include <LibGfx/ImageFormats/TIFFMetadata.h>
 
 namespace ImageDecoder {
@@ -72,6 +73,16 @@ ErrorOr<ConnectionFromClient::DecodeResult> decode_image_to_details(Core::Anonym
             else
                 result.scale.set_x(y_resolution / x_resolution);
         }
+        if (auto gps = Gfx::ExifGPS::from_exif_metadata(exif); gps.has_value())
+            result.gps_location = Gfx::FloatPoint { (float)gps->latitude(), (float)gps->longitude() };
+    }
+
+    if (auto maybe_icc = TRY(decoder->icc_data()); maybe_icc.has_value())
+        result.icc_data = TRY(ByteBuffer::copy(maybe_icc.value()));
+
+    if (auto const& maybe_metadata = decoder->metadata(); maybe_metadata.has_value()) {
+        for (auto const& [key, value] : maybe_metadata->main_tags())
+            TRY(result.metadata.try_set(TRY(String::from_utf8(key)), value));
     }
 
     decode_image_to_bitmaps_and_durations_with_decoder(*decoder, move(ideal_size), bitmaps, result.durations);
@@ -97,7 +108,7 @@ NonnullRefPtr<ConnectionFromClient::Job> ConnectionFromClient::make_decode_image
             return TRY(decode_image_to_details(encoded_buffer, ideal_size, mime_type));
         },
         [strong_this = NonnullRefPtr(*this), image_id](DecodeResult result) -> ErrorOr<void> {
-            strong_this->async_did_decode_image(image_id, result.is_animated, result.loop_count, move(result.bitmaps), move(result.durations), result.scale);
+            strong_this->async_did_decode_image(image_id, result.is_animated, result.loop_count, move(result.bitmaps), move(result.durations), result.scale, move(result.icc_data), move(result.metadata), result.gps_location);
             strong_this->m_pending_jobs.remove(image_id);
             return {};
         },

@@ -24,6 +24,9 @@ struct DecodedImage {
     Gfx::FloatPoint scale { 1, 1 };
     u32 loop_count { 0 };
     Vector<Frame> frames;
+    Optional<ByteBuffer> icc_data;
+    OrderedHashMap<String, String> metadata;
+    Optional<Gfx::FloatPoint> gps_location;
 };
 
 class Client final
@@ -41,7 +44,7 @@ public:
 private:
     virtual void die() override;
 
-    virtual void did_decode_image(i64 image_id, bool is_animated, u32 loop_count, Gfx::BitmapSequence const& bitmap_sequence, Vector<u32> const& durations, Gfx::FloatPoint scale) override;
+    virtual void did_decode_image(i64 image_id, bool is_animated, u32 loop_count, Gfx::BitmapSequence const& bitmap_sequence, Vector<u32> const& durations, Gfx::FloatPoint scale, Optional<ByteBuffer> const& icc_data, OrderedHashMap<String, String> const& metadata, Optional<Gfx::FloatPoint> const& gps_location) override;
     virtual void did_fail_to_decode_image(i64 image_id, String const& error_message) override;
 
     HashMap<i64, NonnullRefPtr<Core::Promise<DecodedImage>>> m_pending_decoded_images;
