@@ -19,6 +19,7 @@
 #include <Applications/FileManager/PropertiesWindowPDFTabGML.h>
 #include <LibArchive/Zip.h>
 #include <LibAudio/Loader.h>
+#include <LibCore/DateTime.h>
 #include <LibCore/Directory.h>
 #include <LibCore/System.h>
 #include <LibDesktop/Launcher.h>
@@ -198,10 +199,10 @@ ErrorOr<void> PropertiesWindow::create_general_tab(GUI::TabWidget& tab_widget, b
     group->set_text(String::formatted("{} ({})", group_name, st.st_gid).release_value_but_fixme_should_propagate_errors());
 
     auto* created_at = general_tab.find_descendant_of_type_named<GUI::Label>("created_at");
-    created_at->set_text(MUST(String::from_byte_string(GUI::FileSystemModel::timestamp_string(st.st_ctime))));
+    created_at->set_text(MUST(String::from_byte_string(Core::DateTime::from_timestamp(st.st_ctime).to_byte_string())));
 
     auto* last_modified = general_tab.find_descendant_of_type_named<GUI::Label>("last_modified");
-    last_modified->set_text(MUST(String::from_byte_string(GUI::FileSystemModel::timestamp_string(st.st_mtime))));
+    last_modified->set_text(MUST(String::from_byte_string(Core::DateTime::from_timestamp(st.st_mtime).to_byte_string())));
 
     auto* owner_read = general_tab.find_descendant_of_type_named<GUI::CheckBox>("owner_read");
     auto* owner_write = general_tab.find_descendant_of_type_named<GUI::CheckBox>("owner_write");

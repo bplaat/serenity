@@ -25,6 +25,7 @@
 #include <LibGUI/Window.h>
 #include <LibGfx/Font/FontDatabase.h>
 #include <LibGfx/Palette.h>
+#include <LibLocale/Locale.h>
 #include <LibMain/Main.h>
 
 ErrorOr<int> serenity_main(Main::Arguments arguments)
@@ -47,8 +48,11 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
         }
     }
 
-    Config::pledge_domain("Calendar");
+    Config::pledge_domains({ "Calendar", "Locale" });
     Config::monitor_domain("Calendar");
+    Config::monitor_domain("Locale");
+
+    Locale::set_default_locale(Config::read_string("Locale"sv, "Locale"sv, "Region"sv, "en-US"sv));
 
     TRY(Core::System::pledge("stdio recvfd sendfd rpath wpath cpath proc exec unix"));
     TRY(Core::System::unveil("/etc/timezone", "r"));

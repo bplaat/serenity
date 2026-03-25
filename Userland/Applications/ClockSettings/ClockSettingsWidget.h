@@ -25,7 +25,8 @@ private:
     void update_time_format_string();
     void update_clock_preview();
 
-    RefPtr<GUI::RadioButton> m_24_hour_radio;
+    bool m_locale_uses_24h { false };
+    RefPtr<GUI::RadioButton> m_locale_default_radio;
     RefPtr<GUI::CheckBox> m_show_seconds_checkbox;
     RefPtr<GUI::TextBox> m_custom_format_input;
     RefPtr<GUI::Label> m_clock_preview;

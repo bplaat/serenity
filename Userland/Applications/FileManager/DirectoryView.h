@@ -114,6 +114,7 @@ public:
     }
 
     void set_should_show_dotfiles(bool);
+    void set_timestamp_format(ByteString format) { m_model->set_timestamp_format(move(format)); }
 
     GUI::FileSystemModel::Node const& node(GUI::ModelIndex const&) const;
 

@@ -10,6 +10,7 @@
 #include <LibGUI/Application.h>
 #include <LibGUI/Icon.h>
 #include <LibGUI/Window.h>
+#include <LibLocale/Locale.h>
 #include <LibMain/Main.h>
 
 #include "VideoPlayerWidget.h"
@@ -21,7 +22,9 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
     args_parser.add_positional_argument(filename, "The video file to display.", "filename", Core::ArgsParser::Required::No);
     args_parser.parse(arguments);
 
-    Config::pledge_domain("VideoPlayer");
+    Config::pledge_domains({ "VideoPlayer", "Locale" });
+
+    Locale::set_default_locale(Config::read_string("Locale"sv, "Locale"sv, "Region"sv, "en-US"sv));
 
     auto app = TRY(GUI::Application::create(arguments));
     app->set_config_domain("VideoPlayer"_string);

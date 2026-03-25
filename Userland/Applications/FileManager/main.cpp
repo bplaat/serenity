@@ -47,6 +47,7 @@
 #include <LibGUI/Widget.h>
 #include <LibGUI/Window.h>
 #include <LibGfx/Palette.h>
+#include <LibLocale/Locale.h>
 #include <LibMain/Main.h>
 #include <LibURL/URL.h>
 #include <pthread.h>
@@ -57,6 +58,25 @@
 #include <unistd.h>
 
 using namespace FileManager;
+
+static ByteString timestamp_format_for_locale(StringView tag)
+{
+    // Use a fixed 24h time component for unambiguous file timestamps.
+    // Date order is derived from locale tag.
+    if (tag == "en-US"sv || tag == "en-CA"sv)
+        return "%m/%d/%Y %H:%M:%S";
+    if (tag.starts_with("en-"sv) || tag.starts_with("fr-"sv) || tag.starts_with("it-"sv)
+        || tag.starts_with("es-"sv) || tag.starts_with("pt-"sv))
+        return "%d/%m/%Y %H:%M:%S";
+    if (tag.starts_with("de-"sv) || tag.starts_with("nb-"sv) || tag.starts_with("da-"sv)
+        || tag.starts_with("fi-"sv))
+        return "%d.%m.%Y %H:%M:%S";
+    if (tag.starts_with("nl-"sv))
+        return "%d-%m-%Y %H:%M:%S";
+    if (tag.starts_with("sv-"sv) || tag.starts_with("ja-"sv) || tag.starts_with("zh-"sv))
+        return "%Y/%m/%d %H:%M:%S";
+    return "%Y-%m-%d %H:%M:%S";
+}
 
 static ErrorOr<int> run_in_desktop_mode();
 static ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString const& entry_focused_on_init);
@@ -93,9 +113,11 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
 
     TRY(Core::System::pledge("stdio thread recvfd sendfd cpath rpath wpath fattr proc exec unix"));
 
-    Config::pledge_domains({ "FileManager", "WindowManager", "Maps" });
+    Config::pledge_domains({ "FileManager", "WindowManager", "Maps", "Locale" });
     Config::monitor_domain("FileManager");
     Config::monitor_domain("WindowManager");
+
+    Locale::set_default_locale(Config::read_string("Locale"sv, "Locale"sv, "Region"sv, "en-US"sv));
 
     if (is_desktop_mode)
         return run_in_desktop_mode();
@@ -613,6 +635,7 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
     auto& tree_view = *widget->find_descendant_of_type_named<GUI::TreeView>("tree_view");
 
     auto directories_model = GUI::FileSystemModel::create({}, GUI::FileSystemModel::Mode::DirectoriesOnly);
+    directories_model->set_timestamp_format(timestamp_format_for_locale(Locale::default_locale()));
     tree_view.set_model(directories_model);
     tree_view.set_column_visible(GUI::FileSystemModel::Column::Icon, false);
     tree_view.set_column_visible(GUI::FileSystemModel::Column::Size, false);
@@ -626,6 +649,7 @@ ErrorOr<int> run_in_windowed_mode(ByteString const& initial_location, ByteString
 
     auto directory_view = TRY(splitter.try_add<DirectoryView>(DirectoryView::Mode::Normal));
     directory_view->set_name("directory_view");
+    directory_view->set_timestamp_format(timestamp_format_for_locale(Locale::default_locale()));
 
     // Open the root directory. FIXME: This is awkward.
     tree_view.toggle_index(directories_model->index(0, 0, {}));

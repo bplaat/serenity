@@ -6,6 +6,8 @@
 
 #include "ClockWidget.h"
 #include <LibConfig/Client.h>
+#include <LibLocale/DateTimeFormat.h>
+#include <LibLocale/Locale.h>
 #include <LibGUI/Action.h>
 #include <LibGUI/Menu.h>
 #include <LibGUI/Painter.h>
@@ -18,11 +20,28 @@
 
 namespace Taskbar {
 
+static bool locale_uses_24h(StringView tag)
+{
+    auto cycle = Locale::get_default_regional_hour_cycle(tag);
+    if (cycle.has_value())
+        return *cycle == Locale::HourCycle::H23 || *cycle == Locale::HourCycle::H24;
+    // Fallback when CLDR data is not compiled in:
+    return tag != "en-US"sv && tag != "en-GB"sv && tag != "en-AU"sv
+        && tag != "en-CA"sv && tag != "es-MX"sv;
+}
+
 ClockWidget::ClockWidget()
 {
     set_frame_style(Gfx::FrameStyle::SunkenPanel);
 
-    update_format(Config::read_string("Taskbar"sv, "Clock"sv, "TimeFormat"sv, "%T"sv));
+    // Use an explicit custom format if stored, otherwise derive from the region locale.
+    auto stored_format = Config::read_string("Taskbar"sv, "Clock"sv, "TimeFormat"sv, ""sv);
+    if (stored_format.is_empty()) {
+        auto region = Config::read_string("Locale"sv, "Locale"sv, "Region"sv, "en-US"sv);
+        update_format(locale_uses_24h(region) ? "%R"sv : "%I:%M %p"sv);
+    } else {
+        update_format(stored_format);
+    }
 
     m_timer = add<Core::Timer>(1000, [this] {
         static time_t last_update_time;

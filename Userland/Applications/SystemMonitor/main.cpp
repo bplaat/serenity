@@ -50,6 +50,7 @@
 #include <LibGUI/Window.h>
 #include <LibGfx/Font/FontDatabase.h>
 #include <LibGfx/Palette.h>
+#include <LibLocale/Locale.h>
 #include <LibMain/Main.h>
 #include <LibThreading/BackgroundAction.h>
 #include <signal.h>
@@ -238,7 +239,9 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
 
     auto app = TRY(GUI::Application::create(arguments));
 
-    Config::pledge_domain("SystemMonitor");
+    Config::pledge_domains({ "SystemMonitor", "Locale" });
+
+    Locale::set_default_locale(Config::read_string("Locale"sv, "Locale"sv, "Region"sv, "en-US"sv));
 
     TRY(Core::System::unveil("/etc/passwd", "r"));
     TRY(Core::System::unveil("/res", "r"));

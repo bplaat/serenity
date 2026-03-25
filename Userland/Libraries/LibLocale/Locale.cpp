@@ -735,9 +735,20 @@ Optional<String> canonicalize_unicode_locale_id(LocaleID& locale_id)
     return MUST(builder.to_string());
 }
 
+static String& mutable_default_locale()
+{
+    static String s = MUST(String::from_utf8("en-US"sv));
+    return s;
+}
+
+void set_default_locale(StringView locale)
+{
+    mutable_default_locale() = MUST(String::from_utf8(locale));
+}
+
 StringView default_locale()
 {
-    return "en"sv;
+    return mutable_default_locale();
 }
 
 bool is_locale_available(StringView locale)

@@ -8,6 +8,8 @@
 #include <LibGUI/Painter.h>
 #include <LibGfx/Font/FontDatabase.h>
 #include <LibGfx/Palette.h>
+#include <LibLocale/DateTimeFormat.h>
+#include <LibLocale/Locale.h>
 
 REGISTER_WIDGET(::Calendar, EventCalendar);
 
@@ -35,7 +37,9 @@ void EventCalendar::paint_tile(GUI::Painter& painter, GUI::Calendar::Tile& tile,
         if (start.year() == tile.year && start.month() == tile.month && start.day() == tile.day) {
             auto text_rect = tile.rect.translated(4, 4 + (font_height + 4) * ++index);
 
-            auto event_text = String::formatted("{} {}", start.to_byte_string("%H:%M"sv), event.summary);
+            auto cycle = Locale::get_default_regional_hour_cycle(Locale::default_locale());
+            bool use_24h = !cycle.has_value() || *cycle == Locale::HourCycle::H23 || *cycle == Locale::HourCycle::H24;
+            auto event_text = String::formatted("{} {}", start.to_byte_string(use_24h ? "%H:%M"sv : "%I:%M %p"sv), event.summary);
             if (event_text.is_error())
                 continue;
 

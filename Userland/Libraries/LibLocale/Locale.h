@@ -143,6 +143,7 @@ void canonicalize_unicode_extension_values(StringView key, String& value, bool r
 Optional<String> canonicalize_unicode_locale_id(LocaleID&);
 
 StringView default_locale();
+void set_default_locale(StringView locale);
 bool is_locale_available(StringView locale);
 
 ReadonlySpan<StringView> get_available_keyword_values(StringView key);

@@ -22,6 +22,7 @@
 #include <LibGUI/BoxLayout.h>
 #include <LibGUI/Icon.h>
 #include <LibGUI/TabWidget.h>
+#include <LibLocale/Locale.h>
 #include <LibMain/Main.h>
 #include <LibWeb/Loader/ResourceLoader.h>
 #include <LibWebView/ChromeProcess.h>
@@ -150,8 +151,10 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
     auto app = TRY(GUI::Application::create(arguments));
     auto const man_file = "/usr/share/man/man1/Applications/Browser.md"sv;
 
-    Config::pledge_domains({ "Browser", "FileManager" });
+    Config::pledge_domains({ "Browser", "FileManager", "Locale" });
     Config::monitor_domain("Browser");
+
+    Locale::set_default_locale(Config::read_string("Locale"sv, "Locale"sv, "Region"sv, "en-US"sv));
 
     // Connect to LaunchServer immediately and let it know that we won't ask for anything other than opening
     // the user's downloads directory.

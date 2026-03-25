@@ -6,16 +6,18 @@
     }
 
     @GUI::GroupBox {
-        title: "Time format"
+        title: "Clock display"
         shrink_to_fit: false
-        fixed_height: 240
+        fixed_height: 170
         layout: @GUI::VerticalBoxLayout {
             margins: [16, 8, 8]
         }
 
         @GUI::Label {
-            text: "Set the date/time format used by the taskbar clock."
+            text: "Override the taskbar clock format."
             text_alignment: "TopLeft"
+            text_wrapping: "Wrap"
+            preferred_height: "fit"
         }
 
         @GUI::Widget {
@@ -25,13 +27,8 @@
             }
 
             @GUI::RadioButton {
-                name: "24hour_radio"
-                text: "24-hour"
-            }
-
-            @GUI::RadioButton {
-                name: "12hour_radio"
-                text: "12-hour"
+                name: "locale_default_radio"
+                text: "Use region default"
             }
 
             @GUI::CheckBox {

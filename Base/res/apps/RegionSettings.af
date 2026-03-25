@@ -1,0 +1,6 @@
+[App]
+Name=Region Settings
+Executable=/bin/RegionSettings
+Category=Settings
+Description=Configure regional formatting for dates, times, and numbers
+ExcludeFromSystemMenu=true

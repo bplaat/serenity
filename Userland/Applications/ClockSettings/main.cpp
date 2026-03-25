@@ -20,7 +20,7 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
 
     auto app = TRY(GUI::Application::create(arguments));
 
-    Config::pledge_domain("Taskbar");
+    Config::pledge_domains({ "Taskbar", "Locale" });
 
     StringView selected_tab;
     Core::ArgsParser args_parser;

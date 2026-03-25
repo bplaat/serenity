@@ -14,4 +14,4 @@ set(SOURCES
 )
 
 serenity_app(VideoPlayer ICON app-video-player)
-target_link_libraries(VideoPlayer PRIVATE LibAudio LibConfig LibCore LibGfx LibGUI LibMain LibMedia LibFileSystemAccessClient LibURL)
+target_link_libraries(VideoPlayer PRIVATE LibAudio LibConfig LibCore LibGfx LibGUI LibLocale LibMain LibMedia LibFileSystemAccessClient LibURL)

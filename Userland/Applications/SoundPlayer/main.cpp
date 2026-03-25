@@ -24,6 +24,7 @@
 #include <LibGUI/Window.h>
 #include <LibGfx/CharacterBitmap.h>
 #include <LibImageDecoderClient/Client.h>
+#include <LibLocale/Locale.h>
 #include <LibMain/Main.h>
 
 ErrorOr<int> serenity_main(Main::Arguments arguments)
@@ -40,8 +41,10 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
     auto audio_client = TRY(Audio::ConnectionToServer::try_create());
     auto decoder_client = TRY(ImageDecoderClient::Client::try_create());
 
-    Config::pledge_domains({ "SoundPlayer", "FileManager" });
+    Config::pledge_domains({ "SoundPlayer", "FileManager", "Locale" });
     app->set_config_domain("SoundPlayer"_string);
+
+    Locale::set_default_locale(Config::read_string("Locale"sv, "Locale"sv, "Region"sv, "en-US"sv));
 
     auto app_icon = GUI::Icon::default_icon("app-sound-player"sv);
 

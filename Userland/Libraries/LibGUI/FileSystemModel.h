@@ -141,10 +141,12 @@ public:
     virtual Vector<ModelIndex> matches(StringView, unsigned = MatchesFlag::AllMatching, ModelIndex const& = ModelIndex()) override;
     virtual void invalidate() override;
 
-    static ByteString timestamp_string(time_t timestamp)
+    ByteString timestamp_string(time_t timestamp) const
     {
-        return Core::DateTime::from_timestamp(timestamp).to_byte_string();
+        return Core::DateTime::from_timestamp(timestamp).to_byte_string(m_timestamp_format);
     }
+
+    void set_timestamp_format(ByteString format) { m_timestamp_format = move(format); }
 
     bool should_show_dotfiles() const { return m_should_show_dotfiles; }
     void set_should_show_dotfiles(bool);
@@ -180,6 +182,7 @@ private:
     Optional<Vector<ByteString>> m_allowed_file_extensions;
 
     bool m_should_show_dotfiles { false };
+    ByteString m_timestamp_format { "%Y-%m-%d %H:%M:%S" };
 
     RefPtr<Core::FileWatcher> m_file_watcher;
 };

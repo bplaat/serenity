@@ -19,6 +19,7 @@
 #include <LibGUI/Menu.h>
 #include <LibGUI/Menubar.h>
 #include <LibGUI/Window.h>
+#include <LibLocale/Locale.h>
 #include <LibMain/Main.h>
 
 ErrorOr<int> serenity_main(Main::Arguments arguments)
@@ -41,8 +42,10 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
         }
     }
 
-    Config::pledge_domain("Spreadsheet");
+    Config::pledge_domains({ "Spreadsheet", "Locale" });
     app->set_config_domain("Spreadsheet"_string);
+
+    Locale::set_default_locale(Config::read_string("Locale"sv, "Locale"sv, "Region"sv, "en-US"sv));
 
     TRY(Core::System::unveil("/tmp/session/%sid/portal/filesystemaccess", "rw"));
     TRY(Core::System::unveil("/tmp/session/%sid/portal/webcontent", "rw"));

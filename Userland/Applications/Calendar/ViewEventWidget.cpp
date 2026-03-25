@@ -7,6 +7,8 @@
 #include "ViewEventWidget.h"
 #include <LibGUI/Button.h>
 #include <LibGUI/Label.h>
+#include <LibLocale/DateTimeFormat.h>
+#include <LibLocale/Locale.h>
 
 namespace Calendar {
 ErrorOr<NonnullRefPtr<ViewEventWidget>> ViewEventWidget::create(ViewEventDialog* parent_window, Vector<Event>& events)
@@ -15,7 +17,9 @@ ErrorOr<NonnullRefPtr<ViewEventWidget>> ViewEventWidget::create(ViewEventDialog*
 
     auto* events_list = widget->find_descendant_of_type_named<GUI::Widget>("events_list");
     for (auto const& event : events) {
-        String text = MUST(String::formatted("{} {}", event.start.to_byte_string("%H:%M"sv), event.summary));
+        auto cycle = Locale::get_default_regional_hour_cycle(Locale::default_locale());
+        bool use_24h = !cycle.has_value() || *cycle == Locale::HourCycle::H23 || *cycle == Locale::HourCycle::H24;
+        String text = MUST(String::formatted("{} {}", event.start.to_byte_string(use_24h ? "%H:%M"sv : "%I:%M %p"sv), event.summary));
         auto label = GUI::Label::construct(text);
         label->set_fill_with_background_color(true);
         label->set_text_alignment(Gfx::TextAlignment::CenterLeft);

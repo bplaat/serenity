@@ -26,9 +26,6 @@ private:
 
     static constexpr Array<StringView, 2> const m_view_modes = { "Month"sv, "Year"sv };
 
-    RefPtr<GUI::ComboBox> m_first_day_of_week_combobox;
-    RefPtr<GUI::ComboBox> m_first_day_of_weekend_combobox;
-    RefPtr<GUI::SpinBox> m_weekend_length_spinbox;
     RefPtr<GUI::ComboBox> m_default_view_combobox;
 };
 

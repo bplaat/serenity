@@ -9,6 +9,9 @@
 
 #include "TaskbarWindow.h"
 #include "ClockWidget.h"
+#include <LibConfig/Client.h>
+#include <LibLocale/DateTimeFormat.h>
+#include <LibLocale/Locale.h>
 #include "QuickLaunchWidget.h"
 #include "TaskbarButton.h"
 #include "TaskbarFrame.h"
@@ -179,11 +182,30 @@ void TaskbarWindow::add_system_menu(NonnullRefPtr<GUI::Menu> system_menu)
     main->insert_child_before(*m_start_button, *m_quick_launch);
 }
 
+static bool locale_uses_24h(StringView tag)
+{
+    auto cycle = Locale::get_default_regional_hour_cycle(tag);
+    if (cycle.has_value())
+        return *cycle == Locale::HourCycle::H23 || *cycle == Locale::HourCycle::H24;
+    // Fallback when CLDR data is not compiled in:
+    return tag != "en-US"sv && tag != "en-GB"sv && tag != "en-AU"sv
+        && tag != "en-CA"sv && tag != "es-MX"sv;
+}
+
 void TaskbarWindow::config_string_did_change(StringView domain, StringView group, StringView key, StringView value)
 {
     if (domain == "Taskbar" && group == "Clock" && key == "TimeFormat") {
         m_clock_widget->update_format(value);
         update_applet_area();
+        return;
+    }
+    if (domain == "Locale" && group == "Locale" && key == "Region") {
+        // Only re-derive when there is no explicit custom format override.
+        auto stored = Config::read_string("Taskbar"sv, "Clock"sv, "TimeFormat"sv, ""sv);
+        if (stored.is_empty()) {
+            m_clock_widget->update_format(locale_uses_24h(value) ? "%R"sv : "%I:%M %p"sv);
+            update_applet_area();
+        }
     }
 }
 
