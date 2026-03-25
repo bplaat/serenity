@@ -41,8 +41,7 @@
 #include <LibGfx/Font/WOFF/Font.h>
 #include <LibGfx/ICC/Profile.h>
 #include <LibGfx/ICC/Tags.h>
-#include <LibGfx/ImageFormats/ExifGPS.h>
-#include <LibGfx/ImageFormats/TIFFMetadata.h>
+#include <LibImageDecoderClient/Client.h>
 #include <LibMaps/MapWidget.h>
 #include <LibPDF/Document.h>
 #include <grp.h>
@@ -406,20 +405,22 @@ ErrorOr<void> PropertiesWindow::create_font_tab(GUI::TabWidget& tab_widget, Nonn
 
 ErrorOr<void> PropertiesWindow::create_image_tab(GUI::TabWidget& tab_widget, NonnullOwnPtr<Core::MappedFile> mapped_file, StringView mime_type)
 {
-    auto image_decoder = TRY(Gfx::ImageDecoder::try_create_for_raw_bytes(mapped_file->bytes(), mime_type));
-    if (!image_decoder)
+    auto image_decoder_client = TRY(ImageDecoderClient::Client::try_create());
+    auto decoded = TRY(image_decoder_client->decode_image(mapped_file->bytes(), {}, {}, OptionalNone {}, ByteString { mime_type })->await());
+    if (decoded.frames.is_empty())
         return {};
 
     auto& tab = tab_widget.add_tab<GUI::Widget>("Image"_string);
     TRY(tab.load_from_gml(properties_window_image_tab_gml));
 
+    auto const size = decoded.frames[0].bitmap->size();
     tab.find_descendant_of_type_named<GUI::Label>("image_type")->set_text(TRY(String::from_utf8(mime_type)));
-    tab.find_descendant_of_type_named<GUI::Label>("image_size")->set_text(TRY(String::formatted("{} x {}", image_decoder->width(), image_decoder->height())));
+    tab.find_descendant_of_type_named<GUI::Label>("image_size")->set_text(TRY(String::formatted("{} x {}", size.width(), size.height())));
 
     String animation_text;
-    if (image_decoder->is_animated()) {
-        auto loops = image_decoder->loop_count();
-        auto frames = image_decoder->frame_count();
+    if (decoded.is_animated) {
+        auto loops = decoded.loop_count;
+        auto frames = decoded.frames.size();
         StringBuilder builder;
         if (loops == 0) {
             TRY(builder.try_append("Loop indefinitely"sv));
@@ -441,8 +442,8 @@ ErrorOr<void> PropertiesWindow::create_image_tab(GUI::TabWidget& tab_widget, Non
         tab.find_descendant_of_type_named<GUI::Widget>("image_icc_group")->set_visible(false);
     };
 
-    if (auto embedded_icc_bytes = TRY(image_decoder->icc_data()); embedded_icc_bytes.has_value()) {
-        auto icc_profile_or_error = Gfx::ICC::Profile::try_load_from_externally_owned_memory(embedded_icc_bytes.value());
+    if (decoded.icc_data.has_value()) {
+        auto icc_profile_or_error = Gfx::ICC::Profile::try_load_from_externally_owned_memory(decoded.icc_data.value());
         if (icc_profile_or_error.is_error()) {
             hide_icc_group("Present but invalid"_string);
         } else {
@@ -454,45 +455,39 @@ ErrorOr<void> PropertiesWindow::create_image_tab(GUI::TabWidget& tab_widget, Non
             tab.find_descendant_of_type_named<GUI::Label>("image_icc_color_space")->set_text(TRY(String::from_utf8(data_color_space_name(icc_profile->data_color_space()))));
             tab.find_descendant_of_type_named<GUI::Label>("image_icc_device_class")->set_text(TRY(String::from_utf8((device_class_name(icc_profile->device_class())))));
         }
-
     } else {
         hide_icc_group("None"_string);
     }
 
-    auto const& basic_metadata = image_decoder->metadata();
-    if (basic_metadata.has_value() && !basic_metadata->main_tags().is_empty()) {
+    if (!decoded.metadata.is_empty()) {
         auto& metadata_group = *tab.find_descendant_of_type_named<GUI::GroupBox>("image_basic_metadata");
         metadata_group.set_visible(true);
 
-        auto const& tags = basic_metadata->main_tags();
-        for (auto const& field : tags) {
+        for (auto const& [key, value] : decoded.metadata) {
             auto& widget = metadata_group.add<GUI::Widget>();
             widget.set_layout<GUI::HorizontalBoxLayout>();
 
-            auto& key_label = widget.add<GUI::Label>(String::from_utf8(field.key).release_value_but_fixme_should_propagate_errors());
+            auto& key_label = widget.add<GUI::Label>(key);
             key_label.set_text_alignment(Gfx::TextAlignment::TopLeft);
             key_label.set_fixed_width(80);
 
-            auto& value_label = widget.add<GUI::Label>(field.value);
+            auto& value_label = widget.add<GUI::Label>(value);
             value_label.set_text_alignment(Gfx::TextAlignment::TopLeft);
         }
     }
 
-    if (auto const& metadata = image_decoder->metadata(); metadata.has_value() && is<Gfx::ExifMetadata>(*metadata)) {
-        auto const& exif_metadata = static_cast<Gfx::ExifMetadata const&>(*metadata);
-        if (auto gps = Gfx::ExifGPS::from_exif_metadata(exif_metadata); gps.has_value()) {
-            auto& gps_container = *tab.find_descendant_of_type_named<GUI::GroupBox>("image_gps");
-            gps_container.set_visible(true);
+    if (decoded.gps_location.has_value()) {
+        auto& gps_container = *tab.find_descendant_of_type_named<GUI::GroupBox>("image_gps");
+        gps_container.set_visible(true);
 
-            Maps::MapWidget::Options options {};
-            options.center.latitude = gps->latitude();
-            options.center.longitude = gps->longitude();
-            options.zoom = 14;
-            auto& map_widget = gps_container.add<Maps::MapWidget>(options);
-            map_widget.add_marker(Maps::MapWidget::Marker {
-                .latlng = { gps->latitude(), gps->longitude() },
-            });
-        }
+        Maps::MapWidget::Options options {};
+        options.center.latitude = decoded.gps_location->x();
+        options.center.longitude = decoded.gps_location->y();
+        options.zoom = 14;
+        auto& map_widget = gps_container.add<Maps::MapWidget>(options);
+        map_widget.add_marker(Maps::MapWidget::Marker {
+            .latlng = { decoded.gps_location->x(), decoded.gps_location->y() },
+        });
     }
 
     return {};
