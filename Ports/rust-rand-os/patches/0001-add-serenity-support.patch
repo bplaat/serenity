@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: SerenityOS Developers <serenityos@serenityos.org>
+Date: Thu, 1 Jan 2026 00:00:00 +0000
+Subject: [PATCH] Add SerenityOS support
+
+Route SerenityOS through the dragonfly_haiku_emscripten random device module
+which reads /dev/urandom, matching SerenityOS behavior.
+
+---
+ src/lib.rs | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/lib.rs b/src/lib.rs
+index 1b9cb25..7ba1e54 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -283,6 +283,7 @@ mod_use!(cfg(target_os = "netbsd"), netbsd);
+ #[cfg(any(target_os = "linux", target_os = "android",
+           target_os = "netbsd", target_os = "dragonfly",
+           target_os = "solaris", target_os = "redox",
+-          target_os = "haiku", target_os = "emscripten",
++          target_os = "haiku", target_os = "emscripten",
++          target_os = "serenity",
+           target_os = "illumos"))]
+ mod random_device;
+@@ -311,6 +312,7 @@ mod_use!(cfg(target_os = "netbsd"), netbsd);
+ mod_use!(cfg(target_os = "openbsd"), openbsd_bitrig);
+ mod_use!(cfg(target_os = "redox"), redox);
+ mod_use!(cfg(any(target_os = "solaris", target_os = "illumos")), solarish);
++mod_use!(cfg(target_os = "serenity"), dragonfly_haiku_emscripten);
+ mod_use!(cfg(windows), windows);
+ mod_use!(cfg(target_env = "sgx"), sgx);
+ 
+@@ -378,6 +380,7 @@ compile_error!("OS RNG support is not available for this platform");
+     target_os = "redox",
+     target_os = "solaris",
+     target_os = "illumos",
++    target_os = "serenity",
+     windows,
+     target_arch = "wasm32",
+     target_env = "sgx"

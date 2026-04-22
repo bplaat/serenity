@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: SerenityOS Developers <serenityos@serenityos.org>
+Date: Thu, 1 Jan 2026 00:00:00 +0000
+Subject: [PATCH] Add SerenityOS errno location
+
+Add SerenityOS to the __errno_location link_name group. SerenityOS uses
+__errno_location (same as Linux/DragonFly/Emscripten).
+
+---
+ src/unix.rs | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/unix.rs b/src/unix.rs
+index 5536eef..41d262a 100644
+--- a/src/unix.rs
++++ b/src/unix.rs
+@@ -95,6 +95,7 @@ extern "C" {
+             target_os = "redox",
+             target_os = "dragonfly",
+             target_os = "emscripten",
++            target_os = "serenity",
+         ),
+         link_name = "__errno_location"
+     )]

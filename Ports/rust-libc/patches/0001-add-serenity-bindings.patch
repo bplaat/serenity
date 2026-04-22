@@ -1,0 +1,41 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: SerenityOS Developers <serenityos@serenityos.org>
+Date: Thu, 1 Jan 2026 00:00:00 +0000
+Subject: [PATCH] Add SerenityOS bindings
+
+Route src/unix/serenity/ through the unix module and exclude SerenityOS
+from the unix unistd re-exports (it provides its own implementations).
+The new src/unix/serenity/mod.rs is added from the port's src/ directory.
+
+---
+ src/new/mod.rs  | 2 +-
+ src/unix/mod.rs | 4 ++++
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/new/mod.rs b/src/new/mod.rs
+index 1c5d6a6..e377924 100644
+--- a/src/new/mod.rs
++++ b/src/new/mod.rs
+@@ -225,7 +225,7 @@ cfg_if! {
+ 
+ // Per-family headers we export
+ cfg_if! {
+-    if #[cfg(all(target_family = "unix", not(target_os = "qurt")))] {
++    if #[cfg(all(target_family = "unix", not(target_os = "qurt"), not(target_os = "serenity")))] {
+         // FIXME(pthread): eventually all platforms should use this module
+         #[cfg(any(
+             target_os = "android",
+diff --git a/src/unix/mod.rs b/src/unix/mod.rs
+index 207c36b..b98836f 100644
+--- a/src/unix/mod.rs
++++ b/src/unix/mod.rs
+@@ -2494,6 +2494,9 @@ cfg_if! {
+     } else if #[cfg(target_os = "nuttx")] {
+         mod nuttx;
+         pub use self::nuttx::*;
++    } else if #[cfg(target_os = "serenity")] {
++        mod serenity;
++        pub use self::serenity::*;
+     } else {
+         // Unknown target_os
+     }

@@ -1,0 +1,5 @@
+# Generated cargo config (contains absolute paths)
+.cargo/config.toml
+
+# Downloaded and patched Rust crates (installed by Ports/rust-*/package.sh)
+crates/

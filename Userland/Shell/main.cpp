@@ -159,7 +159,7 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
         };
     };
 
-    StringView command_to_run = {};
+    Optional<StringView> command_to_run = {};
     StringView file_to_read_from = {};
     Vector<StringView> script_args;
     bool skip_rc_files = false;
@@ -221,9 +221,9 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
     }
 
     auto execute_file = !file_to_read_from.is_empty() && "-"sv != file_to_read_from;
-    attempt_interactive = force_interactive || (!execute_file && (command_to_run.is_empty() || keep_open));
+    attempt_interactive = force_interactive || (!execute_file && (!command_to_run.has_value() || keep_open));
 
-    if (keep_open && command_to_run.is_empty() && !execute_file) {
+    if (keep_open && !command_to_run.has_value() && !execute_file) {
         warnln("Option --keep-open can only be used in combination with -c or when specifying a file to execute.");
         return 1;
     }
@@ -263,8 +263,8 @@ ErrorOr<int> serenity_main(Main::Arguments arguments)
 
     shell->set_local_variable("ARGV", adopt_ref(*new Shell::AST::ListValue(move(args_to_pass))));
 
-    if (!command_to_run.is_empty()) {
-        auto result = shell->run_command(command_to_run);
+    if (command_to_run.has_value()) {
+        auto result = shell->run_command(command_to_run.value());
         if (!keep_open)
             return result;
     }

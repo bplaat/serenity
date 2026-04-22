@@ -409,7 +409,7 @@ fetch_git() {
     fi
 }
 
-fetch() {
+func_defined fetch || fetch() {
     pre_fetch
 
     for f in "${files[@]}"; do

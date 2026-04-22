@@ -1,0 +1,65 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: SerenityOS Developers <serenityos@serenityos.org>
+Date: Thu, 1 Jan 2026 00:00:00 +0000
+Subject: [PATCH] Add SerenityOS support
+
+- Add SerenityOS to the _Opcode = c_ulong group in ioctl/mod.rs
+  (SerenityOS uses c_ulong for ioctl request type like Haiku/Hurd)
+- Add SerenityOS to the mode_t u16 cast groups in fs/syscalls.rs for
+  open() and openat() (SerenityOS mode_t is u16, not u32)
+
+---
+ src/backend/libc/fs/syscalls.rs | 4 ++++
+ src/ioctl/mod.rs                | 1 +
+ 2 files changed, 5 insertions(+)
+
+diff --git a/src/backend/libc/fs/syscalls.rs b/src/backend/libc/fs/syscalls.rs
+index 8cbd3a2..d29c199 100644
+--- a/src/backend/libc/fs/syscalls.rs
++++ b/src/backend/libc/fs/syscalls.rs
+@@ -161,12 +161,14 @@ pub(crate) fn open(path: &CStr, oflags: OFlags, mode: Mode) -> io::Result<OwnedF
+     #[cfg(any(
+         apple,
+         freebsdlike,
++        target_os = "serenity",
+         all(target_os = "android", target_pointer_width = "32")
+     ))]
+     let mode: c::c_uint = mode.bits().into();
+ 
+     // Otherwise, cast to `mode_t` as that's what `open` is documented to take.
+     #[cfg(not(any(
+         apple,
+         freebsdlike,
++        target_os = "serenity",
+         all(target_os = "android", target_pointer_width = "32")
+     )))]
+     let mode: c::mode_t = mode.bits() as _;
+@@ -229,12 +231,14 @@ pub(crate) fn openat(
+     #[cfg(any(
+         apple,
+         freebsdlike,
++        target_os = "serenity",
+         all(target_os = "android", target_pointer_width = "32")
+     ))]
+     let mode: c::c_uint = mode.bits().into();
+ 
+     // Otherwise, cast to `mode_t` as that's what `open` is documented to take.
+     #[cfg(not(any(
+         apple,
+         freebsdlike,
++        target_os = "serenity",
+         all(target_os = "android", target_pointer_width = "32")
+     )))]
+     let mode: c::mode_t = mode.bits() as _;
+diff --git a/src/ioctl/mod.rs b/src/ioctl/mod.rs
+index 4beed11..6aeff07 100644
+--- a/src/ioctl/mod.rs
++++ b/src/ioctl/mod.rs
+@@ -320,6 +320,7 @@ type _Opcode = c::c_int;
+     target_os = "haiku",
+     target_os = "horizon",
+     target_os = "hurd",
++    target_os = "serenity",
+     target_os = "vita"
+ ))]
+ type _Opcode = c::c_ulong;

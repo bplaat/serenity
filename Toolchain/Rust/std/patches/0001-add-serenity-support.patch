@@ -1,0 +1,112 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: SerenityOS Developers <serenityos@serenityos.org>
+Date: Thu, 1 Jan 2026 00:00:00 +0000
+Subject: [PATCH] Add SerenityOS support to Rust std
+
+Add SerenityOS support to the Rust nightly standard library.
+New files (os/serenity/mod.rs, fs.rs, raw.rs) are added from the port's src/
+directory. This patch only modifies existing files.
+
+---
+--- a/std/src/os/mod.rs
++++ b/std/src/os/mod.rs
+@@ -141,6 +141,8 @@
+ pub mod fuchsia;
+ #[cfg(target_os = "haiku")]
+ pub mod haiku;
++#[cfg(target_os = "serenity")]
++pub mod serenity;
+ #[cfg(target_os = "hermit")]
+ pub mod hermit;
+ #[cfg(target_os = "horizon")]
+--- a/std/src/os/unix/mod.rs
++++ b/std/src/os/unix/mod.rs
+@@ -73,6 +73,8 @@
+     pub use crate::os::nto::*;
+     #[cfg(target_os = "nuttx")]
+     pub use crate::os::nuttx::*;
++    #[cfg(target_os = "serenity")]
++    pub use crate::os::serenity::*;
+     #[cfg(target_os = "openbsd")]
+     pub use crate::os::openbsd::*;
+     #[cfg(target_os = "redox")]
+--- a/std/src/sys/thread/mod.rs
++++ b/std/src/sys/thread/mod.rs
+@@ -59,6 +59,7 @@
+             target_os = "hurd",
+             target_os = "aix",
+             target_os = "wasi",
++            target_os = "serenity",
+         )))]
+         pub use unix::set_name;
+         #[cfg(any(
+@@ -85,6 +86,7 @@
+             target_os = "hurd",
+             target_os = "aix",
+             target_os = "wasi",
++            target_os = "serenity",
+         ))]
+         pub use unsupported::set_name;
+     }
+--- a/std/src/sys/paths/unix.rs
++++ b/std/src/sys/paths/unix.rs
+@@ -257,7 +257,8 @@
+     target_os = "hurd",
+     target_os = "android",
+     target_os = "nuttx",
+-    target_os = "emscripten"
++    target_os = "emscripten",
++    target_os = "serenity"
+ ))]
+ pub fn current_exe() -> io::Result<PathBuf> {
+     match crate::fs::read_link("/proc/self/exe") {
+--- a/std/src/sys/random/mod.rs
++++ b/std/src/sys/random/mod.rs
+@@ -24,6 +24,7 @@
+         target_os = "solaris",
+         target_os = "vita",
+         target_os = "nuttx",
++        target_os = "serenity",
+     ) => {
+         mod arc4random;
+         pub use arc4random::fill_bytes;
+--- a/std/src/sys/args/unix.rs
++++ b/std/src/sys/args/unix.rs
+@@ -84,6 +84,7 @@
+     target_os = "hurd",
+     target_os = "rtems",
+     target_os = "nuttx",
++    target_os = "serenity",
+ ))]
+ mod imp {
+     use crate::ffi::c_char;
+--- a/std/src/sys/fs/unix.rs
++++ b/std/src/sys/fs/unix.rs
+@@ -1152,6 +1152,7 @@
+         target_os = "vita",
+         target_os = "vxworks",
+         target_os = "wasi",
++        target_os = "serenity",
+         target_vendor = "apple",
+     ))]
+     pub fn ino(&self) -> u64 {
+--- a/std/build.rs
++++ b/std/build.rs
+@@ -55,6 +55,7 @@
+         || target_os == "zkvm"
+         || target_os == "rtems"
+         || target_os == "nuttx"
++        || target_os == "serenity"
+         || target_os == "cygwin"
+         || target_os == "vexos"
+ 
+--- a/std/src/sys/io/error/unix.rs
++++ b/std/src/sys/io/error/unix.rs
+@@ -10,6 +10,7 @@
+             target_os = "fuchsia",
+             target_os = "l4re",
+             target_os = "hurd",
++        target_os = "serenity",
+         ),
+         link_name = "__errno_location"
+     )]

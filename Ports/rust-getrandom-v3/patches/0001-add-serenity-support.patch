@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: SerenityOS Developers <serenityos@serenityos.org>
+Date: Thu, 1 Jan 2026 00:00:00 +0000
+Subject: [PATCH] Add SerenityOS support
+
+Add SerenityOS to the use_file backend group (reads /dev/urandom) and
+to the __errno_location group in util_libc.rs.
+
+---
+ src/backends.rs  | 1 +
+ src/util_libc.rs | 2 +-
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/src/backends.rs b/src/backends.rs
+index 1234567..abcdefg 100644
+--- a/src/backends.rs
++++ b/src/backends.rs
+@@ -57,6 +57,7 @@ cfg_if! {
+         target_os = "redox",
+         target_os = "nto",
+         target_os = "aix",
++        target_os = "serenity",
+     ))] {
+         mod use_file;
+         pub use use_file::*;
+diff --git a/src/util_libc.rs b/src/util_libc.rs
+index 1234567..abcdefg 100644
+--- a/src/util_libc.rs
++++ b/src/util_libc.rs
+@@ -4,7 +4,7 @@ cfg_if! {
+     if #[cfg(any(target_os = "netbsd", target_os = "openbsd", target_os = "android", target_os = "cygwin"))] {
+         use libc::__errno as errno_location;
+-    } else if #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "hurd", target_os = "redox", target_os = "dragonfly"))] {
++    } else if #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "hurd", target_os = "redox", target_os = "dragonfly", target_os = "serenity"))] {
+         use libc::__errno_location as errno_location;
+     } else if #[cfg(any(target_os = "solaris", target_os = "illumos"))] {
+         use libc::___errno as errno_location;
