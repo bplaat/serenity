@@ -43,6 +43,136 @@ HexEditor::OffsetFormat HexEditor::offset_format_from_string(StringView string)
     return OffsetFormat::Hexadecimal;
 }
 
+// OKLch color palette for byte coloring: 16 groups by leading nibble + special cases for 0x00 and 0xFF
+// Colors are distributed across the hue spectrum for perceptual distinction
+// Special cases: 0x00 = gray (#808080), 0xFF = white (#FFFFFF)
+// These RGB values approximate the OKLch colors from the original specification
+static constexpr Gfx::Color BYTE_COLORS[] {
+    // 0x00 - special gray (neutral background)
+    Color::from_argb(0xff808080),
+    // 0x01-0x0F - hue ~0° (red)
+    Color::from_argb(0xffC84747), Color::from_argb(0xffC84747), Color::from_argb(0xffC84747), Color::from_argb(0xffC84747),
+    Color::from_argb(0xffC84747), Color::from_argb(0xffC84747), Color::from_argb(0xffC84747), Color::from_argb(0xffC84747),
+    Color::from_argb(0xffC84747), Color::from_argb(0xffC84747), Color::from_argb(0xffC84747), Color::from_argb(0xffC84747),
+    Color::from_argb(0xffC84747), Color::from_argb(0xffC84747), Color::from_argb(0xffC84747),
+    // 0x10-0x1F - hue ~23° (red-orange)
+    Color::from_argb(0xffD17D47), Color::from_argb(0xffD17D47), Color::from_argb(0xffD17D47), Color::from_argb(0xffD17D47),
+    Color::from_argb(0xffD17D47), Color::from_argb(0xffD17D47), Color::from_argb(0xffD17D47), Color::from_argb(0xffD17D47),
+    Color::from_argb(0xffD17D47), Color::from_argb(0xffD17D47), Color::from_argb(0xffD17D47), Color::from_argb(0xffD17D47),
+    Color::from_argb(0xffD17D47), Color::from_argb(0xffD17D47), Color::from_argb(0xffD17D47), Color::from_argb(0xffD17D47),
+    // 0x20-0x2F - hue ~50° (orange)
+    Color::from_argb(0xffD9AA47), Color::from_argb(0xffD9AA47), Color::from_argb(0xffD9AA47), Color::from_argb(0xffD9AA47),
+    Color::from_argb(0xffD9AA47), Color::from_argb(0xffD9AA47), Color::from_argb(0xffD9AA47), Color::from_argb(0xffD9AA47),
+    Color::from_argb(0xffD9AA47), Color::from_argb(0xffD9AA47), Color::from_argb(0xffD9AA47), Color::from_argb(0xffD9AA47),
+    Color::from_argb(0xffD9AA47), Color::from_argb(0xffD9AA47), Color::from_argb(0xffD9AA47), Color::from_argb(0xffD9AA47),
+    // 0x30-0x3F - hue ~65° (yellow-orange)
+    Color::from_argb(0xffDCC847), Color::from_argb(0xffDCC847), Color::from_argb(0xffDCC847), Color::from_argb(0xffDCC847),
+    Color::from_argb(0xffDCC847), Color::from_argb(0xffDCC847), Color::from_argb(0xffDCC847), Color::from_argb(0xffDCC847),
+    Color::from_argb(0xffDCC847), Color::from_argb(0xffDCC847), Color::from_argb(0xffDCC847), Color::from_argb(0xffDCC847),
+    Color::from_argb(0xffDCC847), Color::from_argb(0xffDCC847), Color::from_argb(0xffDCC847), Color::from_argb(0xffDCC847),
+    // 0x40-0x4F - hue ~77° (yellow)
+    Color::from_argb(0xffDEDB47), Color::from_argb(0xffDEDB47), Color::from_argb(0xffDEDB47), Color::from_argb(0xffDEDB47),
+    Color::from_argb(0xffDEDB47), Color::from_argb(0xffDEDB47), Color::from_argb(0xffDEDB47), Color::from_argb(0xffDEDB47),
+    Color::from_argb(0xffDEDB47), Color::from_argb(0xffDEDB47), Color::from_argb(0xffDEDB47), Color::from_argb(0xffDEDB47),
+    Color::from_argb(0xffDEDB47), Color::from_argb(0xffDEDB47), Color::from_argb(0xffDEDB47), Color::from_argb(0xffDEDB47),
+    // 0x50-0x5F - hue ~103° (yellow-green)
+    Color::from_argb(0xffD9E847), Color::from_argb(0xffD9E847), Color::from_argb(0xffD9E847), Color::from_argb(0xffD9E847),
+    Color::from_argb(0xffD9E847), Color::from_argb(0xffD9E847), Color::from_argb(0xffD9E847), Color::from_argb(0xffD9E847),
+    Color::from_argb(0xffD9E847), Color::from_argb(0xffD9E847), Color::from_argb(0xffD9E847), Color::from_argb(0xffD9E847),
+    Color::from_argb(0xffD9E847), Color::from_argb(0xffD9E847), Color::from_argb(0xffD9E847), Color::from_argb(0xffD9E847),
+    // 0x60-0x6F - hue ~130° (green)
+    Color::from_argb(0xffC8E847), Color::from_argb(0xffC8E847), Color::from_argb(0xffC8E847), Color::from_argb(0xffC8E847),
+    Color::from_argb(0xffC8E847), Color::from_argb(0xffC8E847), Color::from_argb(0xffC8E847), Color::from_argb(0xffC8E847),
+    Color::from_argb(0xffC8E847), Color::from_argb(0xffC8E847), Color::from_argb(0xffC8E847), Color::from_argb(0xffC8E847),
+    Color::from_argb(0xffC8E847), Color::from_argb(0xffC8E847), Color::from_argb(0xffC8E847), Color::from_argb(0xffC8E847),
+    // 0x70-0x7F - hue ~142° (green-cyan)
+    Color::from_argb(0xffB8E847), Color::from_argb(0xffB8E847), Color::from_argb(0xffB8E847), Color::from_argb(0xffB8E847),
+    Color::from_argb(0xffB8E847), Color::from_argb(0xffB8E847), Color::from_argb(0xffB8E847), Color::from_argb(0xffB8E847),
+    Color::from_argb(0xffB8E847), Color::from_argb(0xffB8E847), Color::from_argb(0xffB8E847), Color::from_argb(0xffB8E847),
+    Color::from_argb(0xffB8E847), Color::from_argb(0xffB8E847), Color::from_argb(0xffB8E847), Color::from_argb(0xffB8E847),
+    // 0x80-0x8F - hue ~150° (cyan)
+    Color::from_argb(0xff9FE856), Color::from_argb(0xff9FE856), Color::from_argb(0xff9FE856), Color::from_argb(0xff9FE856),
+    Color::from_argb(0xff9FE856), Color::from_argb(0xff9FE856), Color::from_argb(0xff9FE856), Color::from_argb(0xff9FE856),
+    Color::from_argb(0xff9FE856), Color::from_argb(0xff9FE856), Color::from_argb(0xff9FE856), Color::from_argb(0xff9FE856),
+    Color::from_argb(0xff9FE856), Color::from_argb(0xff9FE856), Color::from_argb(0xff9FE856), Color::from_argb(0xff9FE856),
+    // 0x90-0x9F - hue ~163° (cyan-blue)
+    Color::from_argb(0xff85F087), Color::from_argb(0xff85F087), Color::from_argb(0xff85F087), Color::from_argb(0xff85F087),
+    Color::from_argb(0xff85F087), Color::from_argb(0xff85F087), Color::from_argb(0xff85F087), Color::from_argb(0xff85F087),
+    Color::from_argb(0xff85F087), Color::from_argb(0xff85F087), Color::from_argb(0xff85F087), Color::from_argb(0xff85F087),
+    Color::from_argb(0xff85F087), Color::from_argb(0xff85F087), Color::from_argb(0xff85F087), Color::from_argb(0xff85F087),
+    // 0xA0-0xAF - hue ~184° (blue)
+    Color::from_argb(0xff7AF0C8), Color::from_argb(0xff7AF0C8), Color::from_argb(0xff7AF0C8), Color::from_argb(0xff7AF0C8),
+    Color::from_argb(0xff7AF0C8), Color::from_argb(0xff7AF0C8), Color::from_argb(0xff7AF0C8), Color::from_argb(0xff7AF0C8),
+    Color::from_argb(0xff7AF0C8), Color::from_argb(0xff7AF0C8), Color::from_argb(0xff7AF0C8), Color::from_argb(0xff7AF0C8),
+    Color::from_argb(0xff7AF0C8), Color::from_argb(0xff7AF0C8), Color::from_argb(0xff7AF0C8), Color::from_argb(0xff7AF0C8),
+    // 0xB0-0xBF - hue ~209° (blue-purple)
+    Color::from_argb(0xff7AE0F0), Color::from_argb(0xff7AE0F0), Color::from_argb(0xff7AE0F0), Color::from_argb(0xff7AE0F0),
+    Color::from_argb(0xff7AE0F0), Color::from_argb(0xff7AE0F0), Color::from_argb(0xff7AE0F0), Color::from_argb(0xff7AE0F0),
+    Color::from_argb(0xff7AE0F0), Color::from_argb(0xff7AE0F0), Color::from_argb(0xff7AE0F0), Color::from_argb(0xff7AE0F0),
+    Color::from_argb(0xff7AE0F0), Color::from_argb(0xff7AE0F0), Color::from_argb(0xff7AE0F0), Color::from_argb(0xff7AE0F0),
+    // 0xC0-0xCF - hue ~232° (purple)
+    Color::from_argb(0xff9FC8F0), Color::from_argb(0xff9FC8F0), Color::from_argb(0xff9FC8F0), Color::from_argb(0xff9FC8F0),
+    Color::from_argb(0xff9FC8F0), Color::from_argb(0xff9FC8F0), Color::from_argb(0xff9FC8F0), Color::from_argb(0xff9FC8F0),
+    Color::from_argb(0xff9FC8F0), Color::from_argb(0xff9FC8F0), Color::from_argb(0xff9FC8F0), Color::from_argb(0xff9FC8F0),
+    Color::from_argb(0xff9FC8F0), Color::from_argb(0xff9FC8F0), Color::from_argb(0xff9FC8F0), Color::from_argb(0xff9FC8F0),
+    // 0xD0-0xDF - hue ~254° (purple-magenta)
+    Color::from_argb(0xffBFACF0), Color::from_argb(0xffBFACF0), Color::from_argb(0xffBFACF0), Color::from_argb(0xffBFACF0),
+    Color::from_argb(0xffBFACF0), Color::from_argb(0xffBFACF0), Color::from_argb(0xffBFACF0), Color::from_argb(0xffBFACF0),
+    Color::from_argb(0xffBFACF0), Color::from_argb(0xffBFACF0), Color::from_argb(0xffBFACF0), Color::from_argb(0xffBFACF0),
+    Color::from_argb(0xffBFACF0), Color::from_argb(0xffBFACF0), Color::from_argb(0xffBFACF0), Color::from_argb(0xffBFACF0),
+    // 0xE0-0xEF - hue ~294° (magenta)
+    Color::from_argb(0xffD9A0D8), Color::from_argb(0xffD9A0D8), Color::from_argb(0xffD9A0D8), Color::from_argb(0xffD9A0D8),
+    Color::from_argb(0xffD9A0D8), Color::from_argb(0xffD9A0D8), Color::from_argb(0xffD9A0D8), Color::from_argb(0xffD9A0D8),
+    Color::from_argb(0xffD9A0D8), Color::from_argb(0xffD9A0D8), Color::from_argb(0xffD9A0D8), Color::from_argb(0xffD9A0D8),
+    Color::from_argb(0xffD9A0D8), Color::from_argb(0xffD9A0D8), Color::from_argb(0xffD9A0D8), Color::from_argb(0xffD9A0D8),
+    // 0xF0-0xFE - hue ~328° (red-magenta)
+    Color::from_argb(0xffD88A9F), Color::from_argb(0xffD88A9F), Color::from_argb(0xffD88A9F), Color::from_argb(0xffD88A9F),
+    Color::from_argb(0xffD88A9F), Color::from_argb(0xffD88A9F), Color::from_argb(0xffD88A9F), Color::from_argb(0xffD88A9F),
+    Color::from_argb(0xffD88A9F), Color::from_argb(0xffD88A9F), Color::from_argb(0xffD88A9F), Color::from_argb(0xffD88A9F),
+    Color::from_argb(0xffD88A9F), Color::from_argb(0xffD88A9F), Color::from_argb(0xffD88A9F),
+    // 0xFF - special white (high contrast)
+    Color::from_argb(0xffFFFFFF),
+};
+
+Gfx::Color HexEditor::get_byte_color(u8 byte)
+{
+    switch (m_coloring_mode) {
+    case ColoringMode::None:
+        return palette().color(ColorRole::BaseText);
+    case ColoringMode::Basic: {
+        if (is_null_byte(byte))
+            return Color::from_argb(0xff808080);
+        if (is_ascii_whitespace(byte))
+            return Color::from_argb(0xff7AF0E8);
+        if (is_ascii_printable(byte))
+            return Color::from_argb(0xff7ACBF0);
+        if (is_ascii_control(byte))
+            return Color::from_argb(0xffFFB8D8);
+        return Color::from_argb(0xffFFD0A5);
+    }
+    case ColoringMode::Full:
+        return BYTE_COLORS[byte];
+    }
+    VERIFY_NOT_REACHED();
+}
+
+void HexEditor::set_color_code_bytes_enabled(bool enabled)
+{
+    if (m_color_code_bytes_enabled == enabled)
+        return;
+    m_color_code_bytes_enabled = enabled;
+    update();
+}
+
+void HexEditor::set_coloring_mode(ColoringMode mode)
+{
+    if (m_coloring_mode == mode)
+        return;
+    m_coloring_mode = mode;
+    m_color_code_bytes_enabled = (mode != ColoringMode::None);
+    update();
+}
+
 HexEditor::HexEditor()
     : m_document(make<HexDocumentMemory>(ByteBuffer::create_zeroed(0).release_value_but_fixme_should_propagate_errors()))
 {
@@ -802,8 +932,9 @@ void HexEditor::paint_event(GUI::PaintEvent& event)
             // 2. The cursor position
             // 3. The selection
             // 4. Annotations
-            // 5. Null bytes
-            // 6. Regular formatting
+            // 5. Byte color coding
+            // 6. Null bytes
+            // 7. Regular formatting
             auto determine_background_color = [&](EditMode edit_mode) -> Optional<Gfx::Color> {
                 if (selected)
                     return cell.modified ? palette().selection().inverted() : palette().selection();
@@ -822,6 +953,8 @@ void HexEditor::paint_event(GUI::PaintEvent& event)
                     return (m_edit_mode == edit_mode) ? palette().color(foreground_role()) : palette().inactive_selection_text();
                 if (annotation.has_value())
                     return annotation->background_color.suggested_foreground_color();
+                if (m_color_code_bytes_enabled)
+                    return get_byte_color(cell.value);
                 if (cell.value == 0x00)
                     return palette().color(ColorRole::PlaceholderText);
                 return palette().color(foreground_role());

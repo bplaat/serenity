@@ -588,6 +588,7 @@ if (BUILD_LAGOM)
         lagom_utility(gml-format SOURCES ../../Userland/Utilities/gml-format.cpp LIBS LibGUI LibMain)
         lagom_utility(gron SOURCES ../../Userland/Utilities/gron.cpp LIBS LibMain)
         lagom_utility(gzip SOURCES ../../Userland/Utilities/gzip.cpp LIBS LibCompress LibMain)
+        lagom_utility(hexdump SOURCES ../../Userland/Utilities/hexdump.cpp LIBS LibMain)
 
         # Work around bug in JetBrains distributed CMake 3.27.2 where this causes infinite recursion in
         # export_components() when called from CLion Nova by checking if we already have Ladybird included

@@ -91,6 +91,11 @@ private:
     RefPtr<GUI::Action> m_show_offsets_column_action;
     GUI::ActionGroup m_offset_format_actions;
 
+    GUI::ActionGroup m_coloring_mode_actions;
+    RefPtr<GUI::Action> m_coloring_mode_none_action;
+    RefPtr<GUI::Action> m_coloring_mode_basic_action;
+    RefPtr<GUI::Action> m_coloring_mode_full_action;
+
     GUI::ActionGroup m_bytes_per_row_actions;
 
     RefPtr<GUI::Statusbar> m_statusbar;

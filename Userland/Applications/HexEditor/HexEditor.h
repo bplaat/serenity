@@ -36,6 +36,13 @@ public:
         Decimal,
         Hexadecimal,
     };
+
+    enum class ColoringMode {
+        None,
+        Basic,
+        Full,
+    };
+
     static OffsetFormat offset_format_from_string(StringView);
 
     virtual ~HexEditor() override = default;
@@ -88,6 +95,12 @@ public:
 
     HexDocument& document() { return *m_document; }
 
+    bool is_color_code_bytes_enabled() const { return m_color_code_bytes_enabled; }
+    void set_color_code_bytes_enabled(bool enabled);
+
+    ColoringMode coloring_mode() const { return m_coloring_mode; }
+    void set_coloring_mode(ColoringMode mode);
+
 protected:
     HexEditor();
 
@@ -121,6 +134,22 @@ private:
     RefPtr<GUI::Action> m_delete_annotation_action;
 
     static constexpr int m_padding = 5;
+
+    bool m_color_code_bytes_enabled { true };
+    ColoringMode m_coloring_mode { ColoringMode::Basic };
+    Gfx::Color get_byte_color(u8 byte);
+
+    static bool is_null_byte(u8 byte) { return byte == 0x00; }
+    static bool is_ascii_printable(u8 byte) { return byte >= 0x20 && byte <= 0x7E; }
+    static bool is_ascii_whitespace(u8 byte)
+    {
+        return byte == 0x09 || byte == 0x0A || byte == 0x0B || byte == 0x0C || byte == 0x0D || byte == 0x20;
+    }
+    static bool is_ascii_control(u8 byte)
+    {
+        return (byte >= 0x01 && byte <= 0x08) || (byte >= 0x0E && byte <= 0x1F) || byte == 0x7F;
+    }
+    static bool is_non_ascii(u8 byte) { return byte >= 0x80; }
 
     void scroll_position_into_view(size_t position);
 

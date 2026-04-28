@@ -666,6 +666,43 @@ ErrorOr<void> HexEditorWidget::initialize_menubar(GUI::Window& window)
     m_editor->set_show_offsets_column(show_offsets_column);
     view_menu->add_action(*m_show_offsets_column_action);
 
+    auto coloring_mode_str = Config::read_string("HexEditor"sv, "Layout"sv, "ColoringMode"sv, "basic"sv);
+    auto coloring_mode = HexEditor::ColoringMode::Basic;
+    if (coloring_mode_str == "none"sv) {
+        coloring_mode = HexEditor::ColoringMode::None;
+    } else if (coloring_mode_str == "full"sv) {
+        coloring_mode = HexEditor::ColoringMode::Full;
+    }
+    m_editor->set_coloring_mode(coloring_mode);
+
+    m_coloring_mode_actions.set_exclusive(true);
+    auto coloring_menu = view_menu->add_submenu("&Coloring"_string);
+
+    struct ColoringModeOption {
+        HexEditor::ColoringMode mode;
+        ByteString label;
+        StringView config_value;
+        RefPtr<GUI::Action>& action;
+    };
+
+    ColoringModeOption options[] {
+        { HexEditor::ColoringMode::None, "&No Coloring"sv, "none"sv, m_coloring_mode_none_action },
+        { HexEditor::ColoringMode::Basic, "&Basic Coloring"sv, "basic"sv, m_coloring_mode_basic_action },
+        { HexEditor::ColoringMode::Full, "&Full Coloring"sv, "full"sv, m_coloring_mode_full_action },
+    };
+
+    for (auto& option : options) {
+        option.action = GUI::Action::create_checkable(option.label, [this, mode = option.mode, config_value = option.config_value](auto&) {
+            m_editor->set_coloring_mode(mode);
+            Config::write_string("HexEditor"sv, "Layout"sv, "ColoringMode"sv, config_value);
+        });
+        if (coloring_mode == option.mode)
+            option.action->set_checked(true);
+        m_coloring_mode_actions.add_action(*option.action);
+        coloring_menu->add_action(*option.action);
+    }
+    view_menu->add_separator();
+
     auto offset_format = HexEditor::offset_format_from_string(Config::read_string("HexEditor"sv, "Layout"sv, "OffsetFormat"sv));
     m_editor->set_offset_format(offset_format);
     m_offset_format_actions.set_exclusive(true);
